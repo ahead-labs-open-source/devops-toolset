@@ -4,12 +4,12 @@ from unittest.mock import patch
 
 import pytest
 
-from devops_toolset.core.app import App
-import devops_toolset.devops_platforms.azuredevops.restapi as sut
-from devops_toolset.tools.xcoding64 import encode
+from devops_toolset.core import App
+import devops_toolset as sut
+from devops_toolset import encode
 from tests.devops_platforms.azuredevops.conftest import mocked_requests_get, mocked_requests_get_ko
-from devops_toolset.core.CommandsCore import CommandsCore
-from devops_toolset.devops_platforms.azuredevops.commands import Commands as PlatformSpecificCommands
+from devops_toolset.core import CommandsCore
+from devops_toolset.devops_platforms.azuredevops import Commands as PlatformSpecificCommands
 
 app: App = App()
 commands = CommandsCore([PlatformSpecificCommands])

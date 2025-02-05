@@ -3,6 +3,7 @@
 from unittest.mock import patch
 from devops_toolset.project_types.azure import api_management
 
+
 # region check_apim_exists()
 
 

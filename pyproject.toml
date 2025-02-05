@@ -1,10 +1,48 @@
-[build-system]
-requires = [
-    "wheel",
-    "setuptools==57.0.0",
-    "requests>=2.25.1",
-    "colorama>=0.4.4",
-    "clint>=0.5.1",
-    "pyfiglet>=0.8.post1"
+[project]
+name = "devops-toolset"
+version = "2.17.7"
+description = "General purpose DevOps-related scripts and tools"
+authors = [
+    {name = "Alberto Carbonell",email = "alberto.carbonell@aheadlabs.com"},
+    {name = "Iván Sainz",email = "ivan.sainz@aheadlabs.com"}
 ]
-build-backend = "setuptools.build_meta"
+license = {text = "MIT"}
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "boto3 (>=1.36.13,<2.0.0)",
+    "botocore (>=1.36.13,<2.0.0)",
+    "clint (>=0.5.1,<0.6.0)",
+    "colorama (>=0.4.6,<0.5.0)",
+    "requests (>=2.32.3,<3.0.0)",
+    "setuptools (>=75.8.0,<76.0.0)",
+    "pendulum (>=3.0.0,<4.0.0)",
+    "pyfiglet (>=1.0.2,<2.0.0)",
+    "pytest (>=8.3.4,<9.0.0)",
+    "pytest-cov (>=6.0.0,<7.0.0)",
+    "pyyaml (>=6.0.2,<7.0.0)"
+]
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+keywords = [ "devops", "script", "tool" ]
+
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Topic :: Documentation :: Sphinx",
+    "Topic :: Software Development :: Documentation",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Software Development :: Testing",
+    "Topic :: Software Development :: Version Control :: Git",
+    "Topic :: Software Development :: Build Tools",
+]
+
+[project.urls]
+homepage = "https://aheadlabs.com/"
+repository = "https://github.com/aheadlabs/devops-toolset"
+documentation = "https://github.com/aheadlabs/devops-toolset/docs/"
+"Bug Tracker" = "https://github.com/aheadlabs/devops-toolset/issues"

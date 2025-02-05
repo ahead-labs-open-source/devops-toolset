@@ -1,6 +1,6 @@
 """Unit core for the apache file"""
 
-import devops_toolset.project_types.linux.apache as sut
+import devops_toolset as sut
 import os
 import pathlib
 

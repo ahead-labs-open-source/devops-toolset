@@ -2,7 +2,7 @@
 
 from unittest.mock import patch
 
-import devops_toolset.project_types.azure.database as sut
+import devops_toolset as sut
 import pytest
 
 # region add_mysql_flexible_server_firewall_rule()

@@ -5,8 +5,8 @@ import pathlib
 import pytest
 from unittest.mock import patch
 
-import devops_toolset.project_types.wordpress.wp_plugin_tools as sut
-from devops_toolset.project_types.wordpress.basic_structure_starter import BasicStructureStarter
+import devops_toolset as sut
+from devops_toolset import BasicStructureStarter
 
 
 # region create_plugin

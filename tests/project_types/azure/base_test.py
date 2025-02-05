@@ -1,7 +1,6 @@
 """ Unit tests for the project_types/azure/base.py module"""
 
 from unittest.mock import patch
-from devops_toolset.project_types.azure import base
 
 
 # region check_resource_group_exists()
@@ -72,9 +71,8 @@ def test_create_resource_group_when_resource_group_exists(mock_logging, mock_cli
 # region for delete_resource_group()
 
 
-import unittest
-from unittest.mock import patch, MagicMock
-from devops_toolset.project_types.azure import base
+from unittest.mock import patch
+from devops_toolset import base
 
 # region delete_resource_group tests
 

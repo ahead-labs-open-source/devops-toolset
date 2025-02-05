@@ -1,18 +1,18 @@
 """ Unit tests for the dotnet/entity_framework.py module"""
 import pytest
 
-from devops_toolset.core.app import App
-from devops_toolset.core.CommandsCore import CommandsCore
-from devops_toolset.core.LiteralsCore import LiteralsCore
-from devops_toolset.project_types.dotnet.commands import Commands as DotnetCommands
-from devops_toolset.project_types.dotnet.Literals import Literals as DotnetLiterals
-from devops_toolset.tools import cli
+from devops_toolset.core import App
+from devops_toolset.core import CommandsCore
+from devops_toolset.core import LiteralsCore
+from devops_toolset import Commands as DotnetCommands
+from devops_toolset import Literals as DotnetLiterals
+from devops_toolset import cli
 from unittest import mock
 from unittest.mock import patch, call
 
 import json
-import devops_toolset.project_types.dotnet.entity_framework as sut
-import devops_toolset.project_types.dotnet.utils as utils
+import devops_toolset as sut
+import devops_toolset as utils
 import pathlib
 
 app: App = App()

@@ -1,12 +1,12 @@
 """Unit core for the parsers file"""
 
-import devops_toolset.filesystem.parsers as sut
+import devops_toolset as sut
 import pathlib
 import json
 from unittest.mock import patch, mock_open
-from devops_toolset.core.app import App
-from devops_toolset.core.LiteralsCore import LiteralsCore
-from devops_toolset.project_types.wordpress.Literals import Literals as WordpressLiterals
+from devops_toolset.core import App
+from devops_toolset.core import LiteralsCore
+from devops_toolset import Literals as WordpressLiterals
 
 app: App = App()
 platform_specific = app.load_platform_specific("environment")

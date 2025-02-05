@@ -5,14 +5,12 @@ import stat
 import pytest
 import json
 import pathlib
-import devops_toolset.project_types.wordpress.basic_structure_starter
-import devops_toolset.project_types.wordpress.wptools as sut
+import devops_toolset
+import devops_toolset as sut
 from devops_toolset.filesystem import paths
-from devops_toolset.project_types.wordpress.basic_structure_starter import BasicStructureStarter
-from devops_toolset.devops_platforms import constants as devops_platform_constants
-import devops_toolset.project_types.wordpress.constants as wp_constants
-from devops_toolset.core.LiteralsCore import LiteralsCore
-from devops_toolset.project_types.wordpress.Literals import Literals as WordpressLiterals
+import devops_toolset as wp_constants
+from devops_toolset.core import LiteralsCore
+from devops_toolset import Literals as WordpressLiterals
 from unittest.mock import patch, mock_open, call
 from tests.project_types.wordpress.conftest import WordPressData, mocked_requests_get, \
     mocked_requests_get_json_content, PluginsData

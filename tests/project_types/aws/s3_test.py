@@ -1,6 +1,6 @@
 """ Unit tests for the project_types/aws/s3.py module"""
 
-import devops_toolset.project_types.aws.s3 as sut
+import devops_toolset as sut
 import json
 import pytest
 

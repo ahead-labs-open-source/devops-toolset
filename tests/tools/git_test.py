@@ -3,16 +3,16 @@
 import io
 import pathlib
 import pytest
-import devops_toolset.tools.git as sut
-import devops_toolset.filesystem.paths as path_tools
+import devops_toolset as sut
+import devops_toolset as path_tools
 from unittest.mock import patch, mock_open, call, ANY
-from devops_toolset.filesystem.constants import Directions, FileNames
+from devops_toolset import Directions, FileNames
 from tests.tools.conftest import GitignoreData
 from tests.tools.conftest import BranchesData
-from devops_toolset.core.CommandsCore import CommandsCore
+from devops_toolset.core import CommandsCore
 from devops_toolset.tools.commands import Commands as ToolsCommands
-from devops_toolset.core.LiteralsCore import LiteralsCore
-from devops_toolset.tools.Literals import Literals as ToolsLiterals
+from devops_toolset.core import LiteralsCore
+from devops_toolset import Literals as ToolsLiterals
 
 commands = CommandsCore([ToolsCommands])
 literals = LiteralsCore([ToolsLiterals])

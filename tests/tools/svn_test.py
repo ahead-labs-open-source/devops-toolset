@@ -2,10 +2,10 @@
 
 from unittest.mock import patch, ANY
 
-import devops_toolset.tools.svn as sut
-from devops_toolset.core.CommandsCore import CommandsCore
-from devops_toolset.core.LiteralsCore import LiteralsCore
-from devops_toolset.tools.Literals import Literals as ToolsLiterals
+import devops_toolset as sut
+from devops_toolset.core import CommandsCore
+from devops_toolset.core import LiteralsCore
+from devops_toolset import Literals as ToolsLiterals
 from devops_toolset.tools.commands import Commands as ToolsCommands
 
 commands = CommandsCore([ToolsCommands])

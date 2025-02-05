@@ -1,7 +1,7 @@
 """Unit core for the core.app file"""
 
 from unittest.mock import patch
-from devops_toolset.core.app import App
+from devops_toolset.core import App
 
 
 # region App()

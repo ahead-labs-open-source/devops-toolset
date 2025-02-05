@@ -2,12 +2,12 @@
 
 import json
 import pathlib
-from unittest.mock import patch, mock_open, ANY
+from unittest.mock import patch, mock_open
 
 import pytest
 
-import devops_toolset.project_types.wordpress.scripts.generate_plugin as sut
-from tests.project_types.wordpress.conftest import mocked_requests_get
+import devops_toolset as sut
+
 
 # region main
 

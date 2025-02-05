@@ -1,10 +1,9 @@
 """Unit tests for the environment file"""
 
-from devops_toolset.core.CommandsCore import CommandsCore
-from devops_toolset.devops_platforms import common
-from devops_toolset.project_types.linux.commands import Commands as LinuxCommands
+from devops_toolset.core import CommandsCore
+from devops_toolset import Commands as LinuxCommands
 from unittest.mock import patch
-import devops_toolset.devops_platforms.aws.environment as sut
+import devops_toolset as sut
 import os
 import pytest
 

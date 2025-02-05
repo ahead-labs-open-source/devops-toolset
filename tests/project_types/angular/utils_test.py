@@ -1,12 +1,12 @@
 """ Unit tests for the project_types/angular/utils.py module"""
 
-import devops_toolset.project_types.angular.utils as sut
+import devops_toolset as sut
 import pathlib
-from devops_toolset.core.CommandsCore import CommandsCore
-from devops_toolset.core.LiteralsCore import LiteralsCore
-from devops_toolset.project_types.angular.commands import Commands as AngularCommands
+from devops_toolset.core import CommandsCore
+from devops_toolset.core import LiteralsCore
+from devops_toolset.project_types.angular import Commands as AngularCommands
 from devops_toolset.project_types.angular.Literals import Literals as AngularLiterals
-from devops_toolset.core.app import App
+from devops_toolset.core import App
 from unittest.mock import patch
 
 app: App = App()

@@ -3,7 +3,8 @@
 from tests.tools.conftest import mocked_requests_get_ip
 from unittest.mock import patch
 
-import devops_toolset.tools.http_protocol as sut
+import devops_toolset as sut
+
 
 # region get_public_ip_address()
 

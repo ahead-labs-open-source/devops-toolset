@@ -3,12 +3,12 @@
 from unittest.mock import patch, call
 import pytest
 
-import devops_toolset.project_types.linux.utils as sut
-from devops_toolset.core.CommandsCore import CommandsCore
-from devops_toolset.core.LiteralsCore import LiteralsCore
-from devops_toolset.project_types.linux.commands import Commands as LinuxCommands
-from devops_toolset.project_types.linux.Literals import Literals as LinuxLiterals
-from devops_toolset.core.app import App
+import devops_toolset as sut
+from devops_toolset.core import CommandsCore
+from devops_toolset.core import LiteralsCore
+from devops_toolset import Commands as LinuxCommands
+from devops_toolset import Literals as LinuxLiterals
+from devops_toolset.core import App
 
 app: App = App()
 literals = LiteralsCore([LinuxLiterals])

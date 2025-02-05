@@ -2,14 +2,13 @@
 import json
 import pathlib
 
-from devops_toolset.devops_platforms import constants as devops_platforms_constants
-import devops_toolset.project_types.wordpress.wp_theme_tools as sut
+import devops_toolset as sut
 import pytest
-import devops_toolset.project_types.wordpress.constants as wp_constants
-from devops_toolset.core.LiteralsCore import LiteralsCore
-from devops_toolset.project_types.wordpress.Literals import Literals as WordpressLiterals
+import devops_toolset as wp_constants
+from devops_toolset.core import LiteralsCore
+from devops_toolset import Literals as WordpressLiterals
 from tests.project_types.wordpress.conftest import WordPressData, ThemesData
-from unittest.mock import patch, call, mock_open, ANY, Mock
+from unittest.mock import patch, call, mock_open, ANY
 
 literals = LiteralsCore([WordpressLiterals])
 

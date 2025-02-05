@@ -1,7 +1,7 @@
 """ Unit tests core for the script_common_test file """
 
 import pytest
-import devops_toolset.project_types.wordpress.scripts.script_common as sut
+import devops_toolset as sut
 from tests.project_types.wordpress.conftest import mocked_requests_get
 from unittest.mock import patch, mock_open
 

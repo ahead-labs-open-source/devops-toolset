@@ -1,7 +1,7 @@
 """Unit core for the zip file"""
 
 from unittest.mock import patch
-import devops_toolset.filesystem.zip as sut
+import devops_toolset as sut
 
 
 # region download_and_unzip_file

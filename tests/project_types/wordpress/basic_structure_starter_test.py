@@ -1,12 +1,12 @@
 """ Unit core for the start_basic_structure_test file """
 import os
 from unittest.mock import patch, call, mock_open
-from devops_toolset.core.LiteralsCore import LiteralsCore
-from devops_toolset.project_types.wordpress.Literals import Literals as WordpressLiterals
+from devops_toolset.core import LiteralsCore
+from devops_toolset import Literals as WordpressLiterals
 from tests.project_types.wordpress.conftest import mocked_requests_get
-from devops_toolset.project_types.wordpress.basic_structure_starter import BasicStructureStarter
+from devops_toolset import BasicStructureStarter
 
-import devops_toolset.filesystem.paths as path_tools
+import devops_toolset as path_tools
 import pathlib
 import pytest
 

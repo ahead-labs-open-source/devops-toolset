@@ -1,10 +1,9 @@
 """Unit tests for the common file"""
 
-from devops_toolset.core.CommandsCore import CommandsCore
-from devops_toolset.devops_platforms.commands import Commands as CommonCommands
+from devops_toolset.core import CommandsCore
+from devops_toolset import Commands as CommonCommands
 from unittest.mock import patch
-import devops_toolset.devops_platforms.common as sut
-import devops_toolset.tools.cli as cli
+import devops_toolset as sut
 
 commands = CommandsCore([CommonCommands])
 

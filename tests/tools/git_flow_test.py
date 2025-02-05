@@ -1,7 +1,8 @@
 """Unit tests for the tools/git_flow module"""
 
 import pytest
-import devops_toolset.tools.git_flow as sut
+import devops_toolset as sut
+
 
 # region is_branch_suitable_for_tagging()
 

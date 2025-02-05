@@ -1,11 +1,11 @@
 """Unit core for the wordpress.wp_cli file"""
 import pytest
-import devops_toolset.project_types.wordpress.wp_cli as sut
-from devops_toolset.core.app import App
-from devops_toolset.core.CommandsCore import CommandsCore
-from devops_toolset.core.LiteralsCore import LiteralsCore
-from devops_toolset.project_types.wordpress.Literals import Literals as WordpressLiterals
-from devops_toolset.project_types.wordpress.commands import Commands as WordpressCommands
+import devops_toolset as sut
+from devops_toolset.core import App
+from devops_toolset.core import CommandsCore
+from devops_toolset.core import LiteralsCore
+from devops_toolset import Literals as WordpressLiterals
+from devops_toolset import Commands as WordpressCommands
 from unittest.mock import patch, ANY
 
 app: App = App()

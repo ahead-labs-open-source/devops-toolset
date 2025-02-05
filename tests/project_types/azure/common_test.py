@@ -1,7 +1,7 @@
 """Unit tests for the project_types/azure/common.py module"""
 
 from unittest.mock import patch
-import devops_toolset.project_types.azure.common as sut
+import devops_toolset as sut
 import pytest
 
 # region get_installed_cli_extensions()

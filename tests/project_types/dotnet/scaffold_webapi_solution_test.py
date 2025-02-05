@@ -1,15 +1,15 @@
 """ Unit tests for the dotnet/scaffold_webapi_solution.py module"""
 import json
 
-import devops_toolset.project_types.dotnet.scaffold_webapi_solution
-import devops_toolset.project_types.dotnet.scaffold_webapi_solution as sut
+import devops_toolset
+import devops_toolset as sut
 import pathlib
 import pytest
-from devops_toolset.core.CommandsCore import CommandsCore
-from devops_toolset.core.LiteralsCore import LiteralsCore
-from devops_toolset.project_types.dotnet.commands import Commands as DotnetCommands
-from devops_toolset.project_types.dotnet.Literals import Literals as DotnetLiterals
-from devops_toolset.core.app import App
+from devops_toolset.core import CommandsCore
+from devops_toolset.core import LiteralsCore
+from devops_toolset import Commands as DotnetCommands
+from devops_toolset import Literals as DotnetLiterals
+from devops_toolset.core import App
 from tests.project_types.dotnet.conftest import DotNetData
 from unittest.mock import ANY, mock_open, patch
 

@@ -1,10 +1,10 @@
 """Unit core for the sonarx file"""
 
 import pathlib
-import devops_toolset.devops_platforms.sonarx as sut
+import devops_toolset as sut
 from unittest.mock import patch
 from tests.devops_platforms.conftest import mocked_requests_get
-from devops_toolset.core.LiteralsCore import LiteralsCore
+from devops_toolset.core import LiteralsCore
 from devops_toolset.devops_platforms.Literals import Literals as DevopsLiterals
 
 

@@ -2,11 +2,9 @@
 
 import json
 import pathlib
-import pytest
-import devops_toolset.project_types.wordpress.constants as constants
-import devops_toolset.project_types.wordpress.scripts.generate_wordpress as sut
-from tests.project_types.wordpress.conftest import mocked_requests_get
-from unittest.mock import patch, mock_open, call, ANY
+import devops_toolset as constants
+import devops_toolset as sut
+from unittest.mock import patch, ANY
 
 # region main
 

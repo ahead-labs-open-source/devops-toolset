@@ -1,7 +1,7 @@
 """Unit core for the dicts file"""
 import json
 
-import devops_toolset.tools.dicts as sut
+import devops_toolset as sut
 
 
 # region filter_keys()

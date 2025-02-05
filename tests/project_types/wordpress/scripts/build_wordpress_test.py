@@ -1,7 +1,7 @@
 """ Unit core for the build_wordpress script """
 
-import pytest
-import devops_toolset.project_types.wordpress.scripts.build_wordpress as sut
+import devops_toolset as sut
+
 
 # region main
 

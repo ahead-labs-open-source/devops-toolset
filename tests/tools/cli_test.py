@@ -1,9 +1,9 @@
 """Unit core for the tools file"""
 
 import unittest.mock as mock
-import devops_toolset.tools.cli as sut
+import devops_toolset as sut
 import subprocess
-import devops_toolset.core.log_tools as log_tools
+import devops_toolset as log_tools
 from pyfiglet import Figlet
 
 # region call_subprocess(str)

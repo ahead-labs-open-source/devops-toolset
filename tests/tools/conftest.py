@@ -4,7 +4,7 @@ Add here whatever you want to pass as a fixture in your texts."""
 
 
 import pytest
-from devops_toolset.core.app import App
+from devops_toolset.core import App
 import pathlib
 
 app: App = App()

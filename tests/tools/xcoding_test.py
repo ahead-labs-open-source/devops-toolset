@@ -1,6 +1,6 @@
 """Unit core for the xcoding64 file"""
 
-import devops_toolset.tools.xcoding64 as sut
+import devops_toolset as sut
 
 
 # region encode()

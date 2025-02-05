@@ -4,7 +4,7 @@ from unittest.mock import patch, mock_open, call
 
 import json
 import pathlib
-import devops_toolset.filesystem.tools as sut
+import devops_toolset as sut
 import pytest
 
 

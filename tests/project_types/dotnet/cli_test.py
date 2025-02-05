@@ -2,12 +2,12 @@
 
 import pytest
 
-import devops_toolset.project_types.dotnet.cli as sut
-from devops_toolset.core.CommandsCore import CommandsCore
-from devops_toolset.core.LiteralsCore import LiteralsCore
-from devops_toolset.project_types.dotnet.commands import Commands as DotnetCommands
-from devops_toolset.project_types.dotnet.Literals import Literals as DotnetLiterals
-from devops_toolset.core.app import App
+import devops_toolset as sut
+from devops_toolset.core import CommandsCore
+from devops_toolset.core import LiteralsCore
+from devops_toolset import Commands as DotnetCommands
+from devops_toolset import Literals as DotnetLiterals
+from devops_toolset.core import App
 
 app: App = App()
 literals = LiteralsCore([DotnetLiterals])

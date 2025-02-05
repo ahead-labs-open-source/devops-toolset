@@ -1,6 +1,6 @@
 """ Unit tests for the project_types/aws/cloudfront.py module"""
 
-import devops_toolset.project_types.aws.cloudfront as sut
+import devops_toolset as sut
 from unittest.mock import patch
 
 

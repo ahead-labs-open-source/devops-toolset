@@ -4,7 +4,7 @@ import pathlib
 from unittest.mock import patch, mock_open
 from tests.project_types.php.conftest import ParsersData
 
-import devops_toolset.project_types.php.parsers as sut
+import devops_toolset as sut
 
 
 # region parse_composer_json_data
