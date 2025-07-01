@@ -37,4 +37,7 @@ class Commands(ValueDictsBase):
         "azure_cli_resource_group_create": "az group create --name {name} --location {location}",
         "azure_cli_resource_group_delete": "az group delete --name {name} --yes --no-wait",
         "azure_cli_resource_group_exists": "az group exists --name {name}",
+        "azure_cli_subscription_list": "az account subscription list",
+        "azure_cli_account_list": "az account list --output json",
+        "azure_cli_account_show": "az account show --output json",
     }
