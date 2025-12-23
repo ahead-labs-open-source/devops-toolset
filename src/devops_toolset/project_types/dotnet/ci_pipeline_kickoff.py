@@ -5,9 +5,9 @@ import devops_toolset.configure
 import devops_toolset.tools.cli
 
 from devops_toolset.core.app import App
-from devops_toolset.core.LiteralsCore import LiteralsCore
+from devops_toolset.core.literals_core import LiteralsCore
 from devops_toolset.project_types.dotnet.entity_framework import check_branch_suitableness_for_migrations
-from devops_toolset.project_types.dotnet.Literals import Literals as DotnetLiterals
+from devops_toolset.project_types.dotnet.literals import Literals as DotnetLiterals
 from devops_toolset.project_types.dotnet.utils import get_csproj_project_version
 from devops_toolset.tools.git import get_current_branch_simplified
 from devops_toolset.tools.http_protocol import get_public_ip_address

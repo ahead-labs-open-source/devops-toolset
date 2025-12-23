@@ -5,13 +5,13 @@ import requests
 from zipfile import ZipFile
 from devops_toolset.tools.xmlparser import XMLParser
 import logging
-from devops_toolset.core.LiteralsCore import LiteralsCore
+from devops_toolset.core.literals_core import LiteralsCore
 from devops_toolset.core.app import App
 import os.path
 import devops_toolset.tools.git as git_tools
 import pathlib
 import shutil
-from devops_toolset.project_types.wordpress.Literals import Literals as WordpressLiterals
+from devops_toolset.project_types.wordpress.literals import Literals as WordpressLiterals
 
 app: App = App()
 literals = LiteralsCore([WordpressLiterals])

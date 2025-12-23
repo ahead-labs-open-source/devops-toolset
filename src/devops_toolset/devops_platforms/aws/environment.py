@@ -2,10 +2,10 @@
 
 from enum import Enum
 from devops_toolset.core.app import App
-from devops_toolset.core.CommandsCore import CommandsCore
-from devops_toolset.core.LiteralsCore import LiteralsCore
-from devops_toolset.devops_platforms.Literals import Literals as CommonLiterals
-from devops_toolset.devops_platforms.aws.Literals import Literals as AwsLiterals
+from devops_toolset.core.commands_core import CommandsCore
+from devops_toolset.core.literals_core import LiteralsCore
+from devops_toolset.devops_platforms.literals import Literals as CommonLiterals
+from devops_toolset.devops_platforms.aws.literals import Literals as AwsLiterals
 from devops_toolset.project_types.linux.commands import Commands as LinuxCommands
 import devops_toolset.devops_platforms.common
 import logging

@@ -16,12 +16,12 @@ import devops_toolset.filesystem.tools
 import devops_toolset.project_types.wordpress.constants as wp_constants
 import devops_toolset.project_types.wordpress.wp_cli as wp_cli
 import devops_toolset.tools.git as git_tools
-from devops_toolset.core.CommandsCore import CommandsCore
-from devops_toolset.core.LiteralsCore import LiteralsCore
+from devops_toolset.core.commands_core import CommandsCore
+from devops_toolset.core.literals_core import LiteralsCore
 from devops_toolset.core.app import App
 from devops_toolset.devops_platforms import constants as devops_platforms_constants
-from devops_toolset.devops_platforms.azuredevops.Literals import Literals as PlatformLiterals
-from devops_toolset.project_types.wordpress.Literals import Literals as WordpressLiterals
+from devops_toolset.devops_platforms.azuredevops.literals import Literals as PlatformLiterals
+from devops_toolset.project_types.wordpress.literals import Literals as WordpressLiterals
 from devops_toolset.project_types.wordpress.basic_structure_starter import BasicStructureStarter
 from devops_toolset.project_types.wordpress.commands import Commands as WordpressCommands
 
@@ -595,7 +595,7 @@ def get_snippet_cloudfront(devops_toolset_wordpress_path: str):
     """
 
     file_path = pathlib.Path.joinpath(
-        pathlib.Path(devops_toolset_wordpress_path), 'default-files/default-cloudfront-forwarded-proto.php')
+        pathlib.Path(devops_toolset_wordpress_path), 'default_files/default-cloudfront-forwarded-proto.php')
     if file_path.exists():
         with open(file_path, "r") as snippet_content:
             snippet = snippet_content.read()

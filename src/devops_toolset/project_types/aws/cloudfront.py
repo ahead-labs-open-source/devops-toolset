@@ -1,8 +1,8 @@
 """Provides tools for managing the AWS CloudFront service"""
 
 from devops_toolset.core.app import App
-from devops_toolset.core.LiteralsCore import LiteralsCore
-from devops_toolset.project_types.aws.Literals import Literals as AwsLiterals
+from devops_toolset.core.literals_core import LiteralsCore
+from devops_toolset.project_types.aws.literals import Literals as AwsLiterals
 
 import boto3
 import logging

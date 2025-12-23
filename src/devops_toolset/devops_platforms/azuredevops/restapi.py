@@ -1,9 +1,9 @@
 """Azure DevOps REST API functionality"""
 
 from devops_toolset.core.app import App
-from devops_toolset.core.CommandsCore import CommandsCore
-from devops_toolset.core.LiteralsCore import LiteralsCore
-from devops_toolset.devops_platforms.azuredevops.Literals import Literals as PlatformSpecificLiterals
+from devops_toolset.core.commands_core import CommandsCore
+from devops_toolset.core.literals_core import LiteralsCore
+from devops_toolset.devops_platforms.azuredevops.literals import Literals as PlatformSpecificLiterals
 from devops_toolset.devops_platforms.azuredevops.commands import Commands as PlatformSpecificCommands
 import devops_toolset.filesystem.paths
 from devops_toolset.tools.xcoding64 import encode

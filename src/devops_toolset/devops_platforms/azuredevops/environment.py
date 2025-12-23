@@ -1,9 +1,9 @@
 """Environment-related functionality for Azure DevOps"""
 import devops_toolset.devops_platforms.common
 from devops_toolset.core.app import App
-from devops_toolset.core.LiteralsCore import LiteralsCore
-from devops_toolset.devops_platforms.Literals import Literals as CommonLiterals
-from devops_toolset.devops_platforms.azuredevops.Literals import Literals as AzureDevOpsLiterals
+from devops_toolset.core.literals_core import LiteralsCore
+from devops_toolset.devops_platforms.literals import Literals as CommonLiterals
+from devops_toolset.devops_platforms.azuredevops.literals import Literals as AzureDevOpsLiterals
 from enum import Enum
 import logging
 import sys

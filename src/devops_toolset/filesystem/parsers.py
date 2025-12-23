@@ -9,9 +9,9 @@ import devops_toolset.project_types.wordpress.constants as wp_constants
 from typing import List
 
 from devops_toolset.core.app import App
-from devops_toolset.core.LiteralsCore import LiteralsCore
-from devops_toolset.filesystem.Literals import Literals as FileSystemLiterals
-from devops_toolset.project_types.wordpress.Literals import Literals as WordpressLiterals
+from devops_toolset.core.literals_core import LiteralsCore
+from devops_toolset.filesystem.literals import Literals as FileSystemLiterals
+from devops_toolset.project_types.wordpress.literals import Literals as WordpressLiterals
 
 
 app: App = App()

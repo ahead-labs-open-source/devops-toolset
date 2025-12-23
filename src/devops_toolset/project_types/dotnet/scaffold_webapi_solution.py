@@ -10,10 +10,10 @@ import logging
 import os
 import pathlib
 from devops_toolset.core.app import App
-from devops_toolset.core.CommandsCore import CommandsCore
-from devops_toolset.core.LiteralsCore import LiteralsCore
+from devops_toolset.core.commands_core import CommandsCore
+from devops_toolset.core.literals_core import LiteralsCore
 from devops_toolset.project_types.dotnet.commands import Commands as DotnetCommands
-from devops_toolset.project_types.dotnet.Literals import Literals as DotnetLiterals
+from devops_toolset.project_types.dotnet.literals import Literals as DotnetLiterals
 
 app: App = App()
 literals = LiteralsCore([DotnetLiterals])

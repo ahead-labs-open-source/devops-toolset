@@ -1,7 +1,7 @@
 """Angular module literals"""
 
 from devops_toolset.core.app import App
-from devops_toolset.core.ValueDictsBase import ValueDictsBase
+from devops_toolset.core.value_dicts_base import ValueDictsBase
 
 app: App = App()
 

@@ -5,8 +5,8 @@ import devops_toolset.configure
 import devops_toolset.tools.cli
 
 from devops_toolset.core.app import App
-from devops_toolset.core.LiteralsCore import LiteralsCore
-from devops_toolset.project_types.dotnet.Literals import Literals as DotnetLiterals
+from devops_toolset.core.literals_core import LiteralsCore
+from devops_toolset.project_types.dotnet.literals import Literals as DotnetLiterals
 from devops_toolset.project_types.angular.utils import get_packagejson_project_version
 from devops_toolset.tools.git import get_current_branch_simplified
 

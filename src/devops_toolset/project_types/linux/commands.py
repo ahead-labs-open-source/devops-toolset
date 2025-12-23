@@ -1,6 +1,6 @@
 """linux module commands"""
 
-from devops_toolset.core.ValueDictsBase import ValueDictsBase
+from devops_toolset.core.value_dicts_base import ValueDictsBase
 from devops_toolset.core.app import App
 
 app: App = App()

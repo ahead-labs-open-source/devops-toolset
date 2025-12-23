@@ -1,10 +1,10 @@
 """Helper functions fot HTTP-related tasks."""
 
 from devops_toolset.core.app import App
-from devops_toolset.core.CommandsCore import CommandsCore
-from devops_toolset.core.LiteralsCore import LiteralsCore
+from devops_toolset.core.commands_core import CommandsCore
+from devops_toolset.core.literals_core import LiteralsCore
 from devops_toolset.tools.commands import Commands as ToolsCommands
-from devops_toolset.tools.Literals import Literals as ToolsLiterals
+from devops_toolset.tools.literals import Literals as ToolsLiterals
 
 import logging
 import re

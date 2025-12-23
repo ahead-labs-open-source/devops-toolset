@@ -1,10 +1,10 @@
 """Provides common tools for all Azure services"""
 
 from devops_toolset.core.app import App
-from devops_toolset.core.CommandsCore import CommandsCore
-from devops_toolset.core.LiteralsCore import LiteralsCore
+from devops_toolset.core.commands_core import CommandsCore
+from devops_toolset.core.literals_core import LiteralsCore
 from devops_toolset.project_types.azure.commands import Commands as AzureCommands
-from devops_toolset.project_types.azure.Literals import Literals as AzureLiterals
+from devops_toolset.project_types.azure.literals import Literals as AzureLiterals
 from devops_toolset.tools import cli
 
 import json

@@ -7,11 +7,11 @@ import shutil
 import devops_toolset.filesystem.paths as paths
 import devops_toolset.tools.git as git_tools
 import devops_toolset.tools.svn as svn
-from devops_toolset.core.CommandsCore import CommandsCore
-from devops_toolset.core.LiteralsCore import LiteralsCore
+from devops_toolset.core.commands_core import CommandsCore
+from devops_toolset.core.literals_core import LiteralsCore
 from devops_toolset.core.app import App
-from devops_toolset.devops_platforms.azuredevops.Literals import Literals as PlatformLiterals
-from devops_toolset.project_types.wordpress.Literals import Literals as WordpressLiterals
+from devops_toolset.devops_platforms.azuredevops.literals import Literals as PlatformLiterals
+from devops_toolset.project_types.wordpress.literals import Literals as WordpressLiterals
 from devops_toolset.project_types.wordpress.basic_structure_starter import BasicStructureStarter
 from devops_toolset.project_types.wordpress.commands import Commands as WordpressCommands
 from devops_toolset.tools.dicts import replace_string_in_dict

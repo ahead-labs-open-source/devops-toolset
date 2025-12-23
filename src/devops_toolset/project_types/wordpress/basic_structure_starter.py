@@ -6,8 +6,8 @@ import os
 import pathlib
 import requests
 from devops_toolset.core.app import App
-from devops_toolset.core.LiteralsCore import LiteralsCore
-from devops_toolset.project_types.wordpress.Literals import Literals as WordpressLiterals
+from devops_toolset.core.literals_core import LiteralsCore
+from devops_toolset.project_types.wordpress.literals import Literals as WordpressLiterals
 from typing import Union
 
 app: App = App()

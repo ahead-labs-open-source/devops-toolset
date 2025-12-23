@@ -3,8 +3,8 @@
 import argparse
 import devops_toolset.filesystem.paths as paths
 
-from devops_toolset.core.LiteralsCore import LiteralsCore
-from devops_toolset.tools.Literals import Literals as ToolsLiterals
+from devops_toolset.core.literals_core import LiteralsCore
+from devops_toolset.tools.literals import Literals as ToolsLiterals
 
 literals = LiteralsCore([ToolsLiterals])
 

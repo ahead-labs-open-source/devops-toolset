@@ -1,6 +1,6 @@
 """Literals for the package."""
 
-from devops_toolset.core.ValueDictsBase import ValueDictsBase
+from devops_toolset.core.value_dicts_base import ValueDictsBase
 from devops_toolset.core.app import App
 
 app: App = App()
@@ -13,7 +13,7 @@ class LiteralsCore(ValueDictsBase):
     1. Create an instance of the LiteralsCore class (this class).
     2. Pass as a parameter list all Literals classes you want to include.
 
-        from devops_toolset.core.LiteralsCore import LiteralsCore
+        from devops_toolset.core.literals_core import LiteralsCore
         from wordpress.Literals import Literals as WpLiterals
 
         literals = LiteralsCore([WpLiterals])

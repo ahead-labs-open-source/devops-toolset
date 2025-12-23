@@ -3,7 +3,7 @@
 import logging as logger
 import logging.handlers
 from logging.config import dictConfig
-from devops_toolset.core.ColorFormatter import ColorFormatter
+from devops_toolset.core.color_formatter import ColorFormatter
 import devops_toolset.core.settings as settings
 
 import json
