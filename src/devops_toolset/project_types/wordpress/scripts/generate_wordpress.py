@@ -17,10 +17,12 @@ import devops_toolset.tools.cli as cli
 import devops_toolset.tools.argument_validators
 import devops_toolset.tools.devops_toolset_utils
 import devops_toolset.tools.git as git_tools
+import devops_toolset.project_types.wordpress.scripts.script_common as common
 from clint.textui import prompt
 from devops_toolset.core.LiteralsCore import LiteralsCore
 from devops_toolset.core.app import App
 from devops_toolset.project_types.wordpress.Literals import Literals as WordpressLiterals
+
 
 app: App = App()
 literals = LiteralsCore([WordpressLiterals])
@@ -65,33 +67,9 @@ def main(root_path: str, db_user_password: str, db_admin_password: str, wp_admin
     required_files_pattern_suffixes: list = list(
         map(lambda x: f"*{x[1]}", constants.FileNames.REQUIRED_FILE_SUFFIXES.items())
     )
-    required_files_not_present: list[str] = paths.files_exist_filtered(
-        root_path, False, required_files_pattern_suffixes)
 
-    # If there are missing required files, ask for using the default ones from GitHub if quiet flag is activated
-    if len(required_files_not_present) > 0:
-        devops_toolset.core.log_tools.log_indented_list(literals.get("wp_required_files_not_found_detail")
-                                                        .format(path=root_path),
-                                                        required_files_not_present,
-                                                        devops_toolset.core.log_tools.LogLevel.warning)
-
-        # Ask to use defaults
-        use_defaults: bool = prompt.yn(literals.get("wp_use_default_files"))
-
-        # If not using defaults, exit
-        if not use_defaults:
-            logging.critical(literals.get("wp_required_files_mandatory"))
-            raise ValueError(literals.get("wp_required_files_not_found").format(path=root_path))
-
-        # Download defaults from GitHub
-        for file in required_files_not_present:
-            url = constants.Urls.BOOTSTRAP_REQUIRED_FILES[file]
-            file_name = paths.get_file_name_from_url(url)
-            file_path = pathlib.Path.joinpath(root_path_obj, file_name)
-
-            response: requests.Response = requests.get(url)
-            with open(file_path, "wb") as fw:
-                fw.write(response.content)
+    # Check required files and prompt user for downloading, if not present
+    common.check_required_files(required_files_pattern_suffixes, root_path, constants.Urls.BOOTSTRAP_REQUIRED_FILES)
 
     # Determine required file paths
     required_file_paths: tuple = devops_toolset.project_types.wordpress.wptools.get_required_file_paths(

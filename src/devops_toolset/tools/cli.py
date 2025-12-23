@@ -3,7 +3,7 @@
 import devops_toolset.core.log_tools
 import subprocess
 from pyfiglet import Figlet
-from typing import List
+from typing import List, Tuple, Union
 
 
 def print_title(text: str):
@@ -12,22 +12,28 @@ def print_title(text: str):
     print(f.renderText(text))
 
 
-def call_subprocess_with_result(command: str, log_err: bool = False) -> str:
+def call_subprocess_with_result(command: str, log_err: bool = False) -> Union[str, Tuple[str, str]]:
     """Calls a subprocess and returns the stdout
 
         Args:
             command: Command to be executed.
             log_err: If True logs error to stderr.
         """
+
     process = subprocess.Popen(command.strip(), shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = process.communicate()
     process.wait()
 
-    if err and log_err:
+    return_out = out.decode("utf-8", errors="backslashreplace") if out else None
+    return_err = err.decode("utf-8", errors="backslashreplace") if err else None
+
+    if log_err:
         devops_toolset.core.log_tools.log_stdouterr(err, devops_toolset.core.log_tools.LogLevel.error)
 
-    if out:
-        return out.decode("utf-8", errors="backslashreplace")
+    if err:
+        return return_out, return_err
+
+    return return_out
 
 
 def call_subprocess(command: str, log_before_process: List[str] = None,

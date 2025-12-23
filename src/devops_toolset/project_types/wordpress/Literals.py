@@ -13,6 +13,7 @@ class Literals(ValueDictsBase):
         "wp_title_bootstrap_repository": _("Bootstrap WordPress repository"),
         "wp_title_build_wordpress": _("Build WordPress site"),
         "wp_title_deploy_wordpress": _("Deploy WordPress site"),
+        "wp_title_generate_plugin": _("Generate WordPress plugin"),
         "wp_title_generate_wordpress": _("Generate WordPress site"),
         "wp_title_wordpress_files": _("WordPress core"),
         "wp_title_wordpress_new_repo": _("WordPress\nexisting repo"),
@@ -29,6 +30,7 @@ class Literals(ValueDictsBase):
         "wp_theme_structure_creating_from_default_file": _("Creating default development theme structure from "
                                                            "{resource}"),
         "wp_default_files": _("These are the default files from the GitHub repository:"),
+        "wp_downloading_default_file": _("Downloading default file {file} from {url}."),
         "wp_directory_created": _("Directory created: {directory}"),
         "wp_environment_file_used": _("The following environment file will be used: {file}"),
         "wp_file_created": _("File created: {file}"),
@@ -47,7 +49,13 @@ class Literals(ValueDictsBase):
         "wp_root_path": _("The root path is: {path}"),
         "wp_themes_install_manually": _("Please, install the theme/s manually."),
         "wp_themes_installing_theme": _("Installing theme \"{theme}\"..."),
+        "wp_plugin_add": _("Adding content under {plugin_path} into svn repository."),
+        "wp_plugin_checkin": _("Checking in content under {plugin_path} into svn repository."),
         "wp_plugin_path": _("The plugin path is: {path}"),
+        "wp_plugin_tag_path_created": _("Plugin's tag path created: {plugin_tag_path}"),
+        "wp_plugin_trunk_copied": _("Plugin's trunk content copied successfully to: {plugin_trunk_path}"),
+        "wp_parsing_plugin_config_file": _("Parsing plugin's config file from {file}."),
+        "wp_parsing_plugin_structure_file": _("Parsing plugin's structure file from {file}."),
         "wp_theme_path": _("The theme path is: {path}"),
         "wp_theme_src_will_not_be_built": _("Development theme wil not be built due to configuration settings."),
         "wp_themes_path": _("The themes path is: {path}"),
@@ -116,6 +124,7 @@ class Literals(ValueDictsBase):
             _("WordPress zip file version was not checked since settings value is 'latest'."),
         "wp_wpcli_export_db_skipping_as_set": _("I am skipping the {dump} database dump as configured in settings..."),
         "wp_wpcli_user_exists": _("User {user} already exists. Skipping user creation..."),
+        "wp_plugin_tag_already_exists": _("The tag {tag_name} already exist. Are you sure it is correct?")
     }
     _errors = {
         "wp_checking_devops_toolset": _("Checking for devops-toolset in: {path}"),
@@ -141,6 +150,7 @@ class Literals(ValueDictsBase):
                                              "I take the first one."),
         "wp_file_not_found": _("The following file was not found: {file}"),
         "wp_latest_version": _("Latest version: {version}"),
+        "wp_mandatory_parameter": _("{parameter_name} is a mandatory parameter. I cannot continue"),
         "wp_not_dir": _("Path must be a dir, not a file."),
         "wp_non_valid_dir_path": _("Path must be an existent dir."),
         "wp_required_files_mandatory": _("Required files are mandatory. I cannot continue."),

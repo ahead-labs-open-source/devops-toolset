@@ -17,6 +17,44 @@ class PluginsData:
         "[{\"name\":\"plugin-name1\",\"source_type\":\"url\",\"source\":\"https://plugin1.zip\",\"force\":true," \
         "\"activate\":true},{\"name\":\"plugin-name2\",\"source_type\":\"zip\",\"source\":\"plugin1.zip\"," \
         "\"force\":true,\"activate\":true}]"
+    commit_message = "Test commit message"
+    tag_name = "v1.0"
+    username = "username"
+    password = "password"
+    plugin_root_path = "/non/existent/path"
+    plugin_config = "{\"$schema\":\"http://dev.aheadlabs.com/schemas/json/wordpress-plugin-config-schema.json\"," \
+                    "\"name\":\"Plugin Name\",\"slug\":\"plugin-name\"," \
+                    "\"uri\":\"https://github.com/my-repository/plugin-name/\"," \
+                    "\"description\":\"Plugin description\"," \
+                    "\"version\":\"0.1.0\",\"author\":\"Plugin owner's name\",\"author_uri\":\"Plugin owner's uri\"," \
+                    "\"license\":\"GPL2\",\"license_uri\":\"https://www.gnu.org/licenses/gpl-2.0.html\"," \
+                    "\"contributors\":[\"contributor 1\",\"contributor 2\"]," \
+                    "\"donate_link\":\"https://paypal.me/my-donate-link\"," \
+                    "\"tags\":[\"tag 1\",\"tag 2\"],\"requires_at_least\":\"6.0\",\"tested_up_to\":\"6.0\"," \
+                    "\"stable_tag\":\"0.1.0\",\"requires_php\":\"5.2.4\"}"
+    empty_plugin_structure = "{\"items\":[]}"
+    plugin_structure = "{\"$schema\":\"http://dev.aheadlabs.com/schemas/json/project-structure-schema.json\"," \
+                       "\"items\":[{\"name\":\".devops\",\"type\":\"directory\",\"children\":[{\"name\":\".gitkeep\"," \
+                       "\"type\":\"file\",\"condition\":\"when-parent-not-empty\"}]},{\"name\":\"assets\"," \
+                       "\"type\":\"directory\",\"children\":[{\"name\":\".gitkeep\",\"type\":\"file\"," \
+                       "\"condition\":\"when-parent-not-empty\"}]},{\"name\":\"src\",\"type\":\"directory\"," \
+                       "\"children\":[{\"name\":\"[plugin-name]\",\"type\":\"directory\"," \
+                       "\"children\":[{\"name\":\"[plugin-name].php\",\"type\":\"file\"," \
+                       "\"default_content\":{\"source\":\"from_url\"," \
+                       "\"value\":\"https://raw.githubusercontent.com/aheadlabs/devops-toolset/master/src/" \
+                       "devops_toolset/project_types/wordpress/default-files/default-plugin-code.php\"}}]}," \
+                       "{\"name\":\"readme.txt\",\"type\":\"file\",\"default_content\":{\"source\":\"from_url\"," \
+                       "\"value\":\"https://raw.githubusercontent.com/aheadlabs/devops-toolset/master/src/" \
+                       "devops_toolset/project_types/wordpress/default-files/default-plugin-readme.txt\"}}]}," \
+                       "{\"name\":\".gitignore\",\"type\":\"file\",\"default_content\":{\"source\":\"from_url\"," \
+                       "\"value\":\"https://raw.githubusercontent.com/aheadlabs/devops-toolset/master/src/" \
+                       "devops_toolset/project_types/wordpress/default-files/default-plugin.gitignore\"}}," \
+                       "{\"name\":\"LICENSE\",\"type\":\"file\",\"default_content\":{\"source\":\"from_url\"," \
+                       "\"value\":\"https://raw.githubusercontent.com/aheadlabs/devops-toolset/master/src/" \
+                       "devops_toolset/project_types/wordpress/default-files/default-plugin-LICENSE\"}}," \
+                       "{\"name\":\"README.md\",\"type\":\"file\",\"default_content\":{\"source\":\"from_url\"," \
+                       "\"value\":\"https://raw.githubusercontent.com/aheadlabs/devops-toolset/master/src/" \
+                       "devops_toolset/project_types/wordpress/default-files/default-plugin-README.md\"}}]}"
 
 
 class ThemesData:
@@ -90,6 +128,8 @@ class WordPressData:
     wordpress_path_part = "/wordpress"
     wordpress_path_err = "/nonexistentpath"
     empty_dict = "{}"
+    required_files_list_one_file = ["*plugin-config.json"]
+    required_files_list_two_files = ["*plugin-config.json", "*plugin-structure.json"]
     environment_config_aws_cloudfront_true = {
         "wp_cli_debug": True,
         "wp_config": {

@@ -1,0 +1,94 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema",
+  "$id": "http://dev.aheadlabs.com/schemas/json/wordpress-plugin-config-schema.json",
+  "title": "WordPress Plugin config",
+  "description": "WordPress plugin config schema",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "slug": {
+      "type": "string"
+    },
+    "uri": {
+      "type": "string",
+      "format": "uri"
+    },
+    "description": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string"
+    },
+    "author": {
+      "type": "string"
+    },
+    "author_uri": {
+      "type": "string",
+      "format": "uri"
+    },
+    "license": {
+      "type": "object",
+      "properties": {
+        "source": {
+            "enum": [
+                "GPL",
+                "GPL2"
+            ]
+        },
+        "value": {
+            "type": "string"
+        }
+    },
+    "license_uri": {
+      "type": "string",
+      "format": "uri"
+    },
+    "contributors": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 0,
+      "uniqueItems": true,
+      "additionalItems": false
+    },
+    "donate_link": {
+      "type": "string",
+      "format": "uri"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 0,
+      "uniqueItems": true,
+      "additionalItems": false
+    },
+    "requires_at_least": {
+      "type": "string"
+    },
+    "tested_up_to": {
+      "type": "string"
+    },
+    "stable_tag": {
+      "type": "string"
+    },
+    "requires_php": {
+      "type": "string"
+    },
+    "additionalProperties": false,
+    "required": [
+      "name",
+      "slug",
+      "uri",
+      "version",
+      "tags",
+      "stable_tag",
+      "license"
+    ]
+  }
+}
+}

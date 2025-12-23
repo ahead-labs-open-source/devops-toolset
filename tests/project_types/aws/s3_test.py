@@ -8,23 +8,7 @@ from datetime import date
 from unittest.mock import patch
 
 
-@patch("logging.info")
-def test_list_objects_in_bucket_returns_list(log_info_mock, paginator, awsdata):
-    """Given a bucket name, returns a list of objects"""
-
-    # Arrange
-    bucket_name: str = "my-bucket"
-    expected_result = json.loads(awsdata.paginator_pages)[0]["Contents"]
-
-    # Act
-    with patch.object(sut, "s3") as s3_mock:
-        with patch.object(s3_mock, "get_paginator") as get_paginator_mock:
-            get_paginator_mock.return_value = paginator
-            result = sut.list_objects_in_bucket(bucket_name)
-
-    # Assert
-    assert result == expected_result
-
+# region get_filtered_objects_from_bucket
 
 def test_get_filtered_objects_from_bucket_given_invalid_path_raises_valuerror(awsdata):
     """Given an invalid path raises a ValueError."""
@@ -76,8 +60,13 @@ def test_get_filtered_objects_from_bucket_given_bucket_name_gets_objects(is_vali
     # Assert
     get_objects_from_bucket_mock.assert_called_once()
 
+# endregion
 
-def test_get_objects_from_bucket_given_invalid_path_raises_valuerror():
+
+# region get_objects_from_bucket
+
+@patch("os.makedirs")
+def test_get_objects_from_bucket_given_invalid_path_raises_valuerror(makedirs_mock):
     """Given an invalid path raises a ValueError."""
 
     # Arrange
@@ -91,8 +80,9 @@ def test_get_objects_from_bucket_given_invalid_path_raises_valuerror():
         sut.get_objects_from_bucket(bucket_name, keys, destination_path)
 
 
+@patch("os.makedirs")
 @patch("devops_toolset.filesystem.paths.is_valid_path")
-def test_get_objects_from_bucket_given_invalid_keys_raises_valuerror(is_valid_path_mock, awsdata):
+def test_get_objects_from_bucket_given_invalid_keys_raises_valuerror(is_valid_path_mock, makedirs_mock, awsdata):
     """Given invalid keys raises a ValueError."""
 
     # Arrange
@@ -107,11 +97,12 @@ def test_get_objects_from_bucket_given_invalid_keys_raises_valuerror(is_valid_pa
         sut.get_objects_from_bucket(bucket_name, keys, destination_path)
 
 
+@patch("os.makedirs")
 @patch("devops_toolset.filesystem.paths.is_valid_path")
 @patch("logging.info")
 @patch("builtins.open")
 def test_get_objects_from_bucket_given_bucket_name_gets_objects(
-        mock_open, logging_info_mock, is_valid_path_mock, awsdata):
+        mock_open, logging_info_mock, makedirs_mock, is_valid_path_mock, awsdata):
     """Given a valid bucket_name downloads objects from the bucket."""
 
     # Arrange
@@ -128,41 +119,32 @@ def test_get_objects_from_bucket_given_bucket_name_gets_objects(
     # Assert
     assert download_fileobj_mock.call_count == len(keys)
 
-
-def test_put_object_to_bucket_given_invalid_path_raises_valuerror(awsdata):
-    """Given an invalid local path raises a ValueError."""
-
-    # Arrange
-    bucket_name = "my-bucket"
-    local_path = ""
-    destination_key = awsdata.valid_path
-
-    # Act
-    with pytest.raises(ValueError):
-        # Assert
-        sut.put_object_to_bucket(bucket_name, local_path, destination_key)
+# endregion
 
 
-@patch("builtins.open")
-@patch("devops_toolset.filesystem.paths.is_valid_path")
+# region list_objects_in_bucket
+
 @patch("logging.info")
-def test_put_object_to_bucket_given_bucket_puts_object(logging_info_mock, is_valid_path_mock, mock_open, awsdata):
-    """Given a bucket name uploads the object."""
+def test_list_objects_in_bucket_returns_list(log_info_mock, paginator, awsdata):
+    """Given a bucket name, returns a list of objects"""
 
     # Arrange
-    bucket_name = "my-bucket"
-    local_path = ""
-    destination_key = awsdata.valid_path
-    is_valid_path_mock.return_value = True
+    bucket_name: str = "my-bucket"
+    expected_result = json.loads(awsdata.paginator_pages)[0]["Contents"]
 
     # Act
     with patch.object(sut, "s3") as s3_mock:
-        with patch.object(s3_mock, "put_object") as put_object_mock:
-            sut.put_object_to_bucket(bucket_name, local_path, destination_key)
+        with patch.object(s3_mock, "get_paginator") as get_paginator_mock:
+            get_paginator_mock.return_value = paginator
+            result = sut.list_objects_in_bucket(bucket_name)
 
     # Assert
-    put_object_mock.assert_called()
+    assert result == expected_result
 
+# endregion
+
+
+# region put_bulk_objects_to_bucket
 
 @patch("devops_toolset.filesystem.paths.is_valid_path")
 def test_put_bulk_objects_to_bucket_given_invalid_path_raises_valuerror(is_valid_path_mock, awsdata):
@@ -200,3 +182,44 @@ def test_put_bulk_objects_to_bucket(is_valid_path_mock, get_file_paths_in_tree_m
 
     # Assert
     assert put_object_to_bucket_mock.call_count == len(awsdata.file_list)
+
+# endregion
+
+
+# region put_object_to_bucket
+
+@patch("builtins.open")
+@patch("devops_toolset.filesystem.paths.is_valid_path")
+@patch("logging.info")
+def test_put_object_to_bucket_given_bucket_puts_object(logging_info_mock, is_valid_path_mock, mock_open, awsdata):
+    """Given a bucket name uploads the object."""
+
+    # Arrange
+    bucket_name = "my-bucket"
+    local_path = ""
+    destination_key = awsdata.valid_path
+    is_valid_path_mock.return_value = True
+
+    # Act
+    with patch.object(sut, "s3") as s3_mock:
+        with patch.object(s3_mock, "put_object") as put_object_mock:
+            sut.put_object_to_bucket(bucket_name, local_path, destination_key)
+
+    # Assert
+    put_object_mock.assert_called()
+
+
+def test_put_object_to_bucket_given_invalid_path_raises_valuerror(awsdata):
+    """Given an invalid local path raises a ValueError."""
+
+    # Arrange
+    bucket_name = "my-bucket"
+    local_path = ""
+    destination_key = awsdata.valid_path
+
+    # Act
+    with pytest.raises(ValueError):
+        # Assert
+        sut.put_object_to_bucket(bucket_name, local_path, destination_key)
+
+# endregion

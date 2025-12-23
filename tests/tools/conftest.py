@@ -116,3 +116,18 @@ class MockResponse(object):
     def __init__(self, b_content, text_content):
         self.content = b_content
         self.text = text_content
+
+
+class SvnData(object):
+    """ Class used to create the gitdata fixture """
+    glob = "trunk/*"
+    comment = "This is a test comment for the check in"
+    username = "TestUsername"
+    password = "TestPassword"
+    repo_url = "https://plugins.svn.wordpress.org/your-plugin-name"
+    path = "/test/path"
+
+@pytest.fixture
+def svndata():
+    """Sample data for testing Git functionality"""
+    return SvnData()

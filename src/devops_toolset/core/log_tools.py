@@ -14,7 +14,7 @@ class LogLevel(Enum):
     debug = 10,
 
 
-def log_list(logs_list: List[str], level: LogLevel):
+def log_list(logs_list: List[str], level: LogLevel = LogLevel.info):
     """Logs a list using the specified level.
 
     Args:
