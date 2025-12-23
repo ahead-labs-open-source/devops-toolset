@@ -1,0 +1,7 @@
+# IDEs
+**/.idea/
+**/.vscode/
+**/.vs/
+
+# SVN repository
+.svn-repository/

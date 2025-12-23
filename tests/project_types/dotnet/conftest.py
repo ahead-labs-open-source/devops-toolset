@@ -98,15 +98,6 @@ class DotNetData(object):
             yield file
 
 
-class GitData(object):
-    """ Class used to create the gitdata fixture """
-
-    branch = "heads/refs/dev"
-    tag = "v1.0.0"
-    commit = "fdr564"
-    auth_header = "bearer 1234"
-
-
 class MigrationsData(object):
     """Class used to create the migrationsdata fixture"""
 
@@ -124,12 +115,6 @@ class MigrationsData(object):
 def dotnetdata():
     """Sample data for testing .NET related functionality"""
     return DotNetData()
-
-
-@pytest.fixture
-def gitdata():
-    """Sample data for testing Git functionality"""
-    return GitData()
 
 
 @pytest.fixture

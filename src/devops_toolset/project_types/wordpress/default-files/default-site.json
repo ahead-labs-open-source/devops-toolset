@@ -1,0 +1,206 @@
+{
+  "$schema": "https://dev.aheadlabs.com/schemas/json/wordpress-site-schema.json",
+  "content": {
+    "author_handling": "skip",
+    "sources": []
+  },
+  "environments": [
+    {
+      "base_url": "https://localhost/mysite",
+      "database": {
+        "charset": "utf8mb4",
+        "collate": "utf8mb4_unicode_ci",
+        "db_admin_user": "root",
+        "db_name": "mysite_com",
+        "db_user": "dbuser_mysite",
+        "host": "localhost",
+        "skip_check": true,
+        "table_prefix": "wp_"
+      },
+      "is_default": true,
+      "name": "localhost",
+      "settings": {
+        "aws_cloudfront": false
+      },
+      "type": "development",
+      "wp_cli_debug": false,
+      "wp_config": {
+        "accessible_hosts": {
+          "name": "WP_ACCESSIBLE_HOSTS",
+          "type": "constant",
+          "value": "localhost,api.wordpress.org,*.auth0.com"
+        },
+        "auto_update_core": {
+          "name": "WP_AUTO_UPDATE_CORE",
+          "type": "constant",
+          "value": "minor"
+        },
+        "cache": {
+          "name": "WP_CACHE",
+          "type": "constant",
+          "value": false
+        },
+        "content_url": {
+          "name": "WP_CONTENT_URL",
+          "type": "constant",
+          "value": "/wp-content"
+        },
+        "debug": {
+          "name": "WP_DEBUG",
+          "type": "constant",
+          "value": true
+        },
+        "debug_display": {
+          "name": "WP_DEBUG_DISPLAY",
+          "type": "constant",
+          "value": false
+        },
+        "disable_fatal_error_handler": {
+          "name": "WP_DISABLE_FATAL_ERROR_HANDLER",
+          "type": "constant",
+          "value": false
+        },
+        "disallow_file_edit": {
+          "name": "DISALLOW_FILE_EDIT",
+          "type": "constant",
+          "value": false
+        },
+        "disallow_file_mods": {
+          "name": "DISALLOW_FILE_MODS",
+          "type": "constant",
+          "value": false
+        },
+        "empty_trash_days": {
+          "name": "EMPTY_TRASH_DAYS",
+          "type": "constant",
+          "value": 5
+        },
+        "force_ssl_admin": {
+          "name": "FORCE_SSL_ADMIN",
+          "type": "constant",
+          "value": false
+        },
+        "home_url": {
+          "name": "WP_HOME",
+          "type": "constant",
+          "value": ""
+        },
+        "http_block_external": {
+          "name": "WP_HTTP_BLOCK_EXTERNAL",
+          "type": "constant",
+          "value": false
+        },
+        "image_edit_overwrite": {
+          "name": "IMAGE_EDIT_OVERWRITE",
+          "type": "constant",
+          "value": true
+        },
+        "noblogredirect_url": {
+          "name": "NOBLOGREDIRECT",
+          "type": "constant",
+          "value": ""
+        },
+        "plugin_url": {
+          "name": "WP_PLUGIN_URL",
+          "type": "constant",
+          "value": "/wp-content/plugins"
+        },
+        "save_queries": {
+          "name": "SAVEQUERIES",
+          "type": "constant",
+          "value": false
+        },
+        "site_url": {
+          "name": "WP_SITEURL",
+          "type": "constant",
+          "value": ""
+        },
+        "wpml_auto_updates": {
+          "name": "OTGS_DISABLE_AUTO_UPDATES",
+          "type": "constant",
+          "value": false
+        }
+      }
+    }
+  ],
+  "settings": {
+    "description": "My site description",
+    "dumps": {
+      "core": "[date|Y.m.d-Hisve]-db.core.sql",
+      "plugins": "[date|Y.m.d-Hisve]-db.plugins.sql",
+      "regular": "[date|Y.m.d-Hisve]-db-[commit].sql",
+      "theme": "[date|Y.m.d-Hisve]-db.theme.sql"
+    },
+    "locale": "en_US",
+    "options": [
+      {
+        "autoload": true,
+        "name": "permalink_structure",
+        "value": "/%category%/%postname%/"
+      }
+    ],
+    "plugins": [
+      {
+        "activate": false,
+        "force": true,
+        "name": "akismet",
+        "source": "akismet",
+        "source_type": "wordpress"
+      },
+      {
+        "activate": true,
+        "force": true,
+        "name": "google-site-kit",
+        "source": "google-site-kit",
+        "source_type": "wordpress"
+      },
+      {
+        "activate": true,
+        "force": true,
+        "name": "wordpress-importer",
+        "source": "wordpress-importer",
+        "source_type": "wordpress"
+      },
+      {
+        "activate": true,
+        "force": true,
+        "name": "wp-mail-smtp",
+        "source": "wp-mail-smtp",
+        "source_type": "wordpress"
+      }
+    ],
+    "project": {
+      "name": "My project name",
+      "url": "https://aheadlabs.com",
+      "version": "0.1.0"
+    },
+    "skip_content_download": true,
+    "themes": [
+      {
+        "activate": false,
+        "author": "Automattic",
+        "author_uri": "https://wordpress.org",
+        "build": false,
+        "description": "WordPress official theme",
+        "name": "twentytwentytwo",
+        "source": "twentytwentytwo",
+        "source_type": "wordpress",
+        "minimum-php-version": "5.6",
+        "minimum-wordpress-version": "5.9",
+        "minimum-wordpress-version-tested": "5.9",
+        "tags": ["wordpress"],
+        "url": "https://wordpress.org/themes/twentytwentytwo/",
+        "version": "1.2.0"
+      }
+    ],
+    "title": "My site",
+    "users": [
+    ],
+    "version": "latest",
+    "wp_admin": {
+      "email": "admin@example.com",
+      "skip_email": true,
+      "user": "wp_admin"
+    }
+  }
+}

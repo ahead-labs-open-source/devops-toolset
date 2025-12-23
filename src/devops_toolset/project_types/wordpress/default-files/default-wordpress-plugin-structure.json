@@ -1,0 +1,117 @@
+{
+  "$schema": "http://dev.aheadlabs.com/schemas/json/project-structure-schema.json",
+  "items": [
+    {
+      "name": ".devops",
+      "type": "directory",
+      "children": [
+        {
+          "name": ".gitkeep",
+          "type": "file",
+          "condition": "when-parent-not-empty"
+        }
+      ]
+    },
+    {
+      "name": ".svn_repository",
+      "type": "directory",
+      "children": [
+        {
+          "name": "tags",
+          "type": "directory"
+        },
+        {
+          "name": "assets",
+          "type": "directory"
+        },
+        {
+          "name": "trunk",
+          "type": "directory",
+          "children": [
+            {
+              "name": "[plugin-name].php",
+              "type": "file",
+              "default_content": {
+                "source": "from_url",
+                "value": "https://raw.githubusercontent.com/aheadlabs/devops-toolset/master/src/devops_toolset/project_types/wordpress/default-files/default-plugin-code.php"
+              }
+            },
+            {
+              "name": "readme.txt",
+              "type": "file",
+              "default_content": {
+                "source": "from_url",
+                "value": "https://raw.githubusercontent.com/aheadlabs/devops-toolset/master/src/devops_toolset/project_types/wordpress/default-files/default-plugin-readme.txt"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+},
+{
+"name": "assets",
+"type": "directory",
+"children": [
+{
+"name": ".gitkeep",
+"type": "file",
+"condition": "when-parent-not-empty"
+}
+]
+},
+{
+"name": "src",
+"type": "directory",
+"children": [
+{
+"name": "[plugin-name]",
+"type": "directory",
+"children": [
+{
+"name": "[plugin-name].php",
+"type": "file",
+"default_content": {
+"source": "from_url",
+"value": "https://raw.githubusercontent.com/aheadlabs/devops-toolset/master/src/devops_toolset/project_types/wordpress/default-files/default-plugin-code.php"
+}
+}
+]
+},
+{
+"name": "readme.txt",
+"type": "file",
+"default_content": {
+"source": "from_url",
+"value": "https://raw.githubusercontent.com/aheadlabs/devops-toolset/master/src/devops_toolset/project_types/wordpress/default-files/default-plugin-readme.txt"
+}
+}
+]
+},
+{
+"name": ".gitignore",
+"type": "file",
+"default_content": {
+"source": "from_url",
+"value": "https://raw.githubusercontent.com/aheadlabs/devops-toolset/master/src/devops_toolset/project_types/wordpress/default-files/default-plugin.gitignore"
+}
+},
+{
+"name": "LICENSE",
+"type": "file",
+"default_content": {
+"source": "from_url",
+"value": "https://raw.githubusercontent.com/aheadlabs/devops-toolset/master/src/devops_toolset/project_types/wordpress/default-files/default-plugin-LICENSE"
+}
+},
+{
+"name": "README.md",
+"type": "file",
+"default_content": {
+"source": "from_url",
+"value": "https://raw.githubusercontent.com/aheadlabs/devops-toolset/master/src/devops_toolset/project_types/wordpress/default-files/default-plugin-README.md"
+}
+}
+]
+}

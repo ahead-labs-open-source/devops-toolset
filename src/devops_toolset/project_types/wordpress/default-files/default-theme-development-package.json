@@ -1,32 +1,43 @@
 {
-  "name": "my-wordpress-project",
-  "version": "0.1.0",
-  "description": "Ad hoc WordPress theme.",
+  "name": "{{theme-name}}",
+  "version": "{{theme-version}}",
+  "description": "{{theme-description}}",
   "main": "index.php",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "gulp build --theme-slug=${npm_package_name} --dist=dist --wordpress-theme-path=../../../wordpress/wp-content/themes/${npm_package_name}",
-    "watch": "gulp watch --theme-slug=${npm_package_name} --dist=dist --wordpress-theme-path=../../../wordpress/wp-content/themes/${npm_package_name} --dev-proxy=localhost/${npm_package_name}",
-    "i18n-pot": "wp i18n make-pot . src/languages/mytheme.pot",
+    "start": "webpack serve",
+    "build": "webpack --env environment=localhost",
+    "build-production": "webpack --env environment=production",
+    "watch": "concurrently \"webpack --watch\" \"browser-sync start --config browsersync.config.js\"",
+    "i18n-pot": "wp i18n make-pot . src/languages/{{theme-name}}.pot",
     "i18n-compile": "msgfmt -o src/languages/en_US.mo src/languages/en_US.po && msgfmt -o src/languages/es_ES.mo src/languages/es_ES.po"
   },
-  "keywords": [
-    "wordpress",
-    "theme",
-    "framework",
-    "w74",
-    "aheadlabs"
-  ],
+  "keywords": "{{theme-tags}}",
   "author": {
-    "name": "@aheadlabs",
-    "url": "https://example.com"
+    "name": "{{theme-author}}",
+    "url": "{{theme-url}}"
   },
-  "license": "ISC",
-  "homepage": "https://example.com",
+  "license": "GPLv3",
+  "homepage": "{{production-environment-url}}",
   "devDependencies": {
-    "@aheadlabs/gulp-w74framework": "latest",
     "bootstrap": "latest",
-    "gulp": "latest"
+    "browser-sync": "latest",
+    "concurrently": "latest",
+    "copy-webpack-plugin": "latest",
+    "css-loader": "latest",
+    "filemanager-webpack-plugin": "^7.0.0",
+    "mini-css-extract-plugin": "latest",
+    "postcss": "latest",
+    "postcss-loader": "latest",
+    "postcss-preset-env": "latest",
+    "sass": "latest",
+    "sass-loader": "latest",
+    "string-replace-loader": "latest",
+    "ts-loader": "latest",
+    "typescript": "latest",
+    "webpack": "latest",
+    "webpack-cli": "latest",
+    "webpack-dev-server": "latest"
   },
   "dependencies": {
     "@fortawesome/fontawesome-free": "latest"

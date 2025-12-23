@@ -6,6 +6,7 @@ import devops_toolset.core.app
 import devops_toolset.filesystem.paths
 import devops_toolset.filesystem.paths as path_tools
 import devops_toolset.tools.cli
+import devops_toolset.tools.git_flow as gitflow
 import logging
 import os
 import pathlib
@@ -140,6 +141,37 @@ def git_init(path: str, skip: bool, prompt_user: bool = False):
                                                      log_after_out=[literals.get("git_repo_created")])
 
 
+def git_tag(commit_name: str, tag_name: str, branch: str, auth_header: str, overwrite_tag: bool = True):
+    """ Does a git tag over a checkout branch's commit
+        Args:
+            commit_name: Name of the commit.
+            Git will need the checksum name, or part of it.
+            F.I: If the commit name is 9fceb02d0ae598e95dc970b74767f19372d61af8, the checksum will be 9fceb02.
+            tag_name: Name of the tag to be added.
+            branch: The simplified name of the git branch.
+            auth_header: Includes an auth header into the git command (needed for elevated privilege operations).
+            Normally, it will be ["basic <BASIC_AUTH_TOKEN>"] or "bearer <BEARER_TOKEN>"]
+            overwrite_tag: Tag will be moved to the <commit_name> if exists. False will maintain the current tag.
+            Default behaviour is True -> move tag if exist on remote
+    """
+    if gitflow.is_branch_suitable_for_tagging(branch):
+        if git_tag_exist(tag_name, auth_header):
+            logging.warning(literals.get("git_tag_exists").format(tag_name=tag_name))
+            # Tag exists. Depending on the overwrite_tag behaviour we'll move the tag or not
+            if overwrite_tag:
+                logging.warning(literals.get("git_existing_tag_move").format(tag_name=tag_name,
+                                                                             commit_name=commit_name))
+                # Delete current tag on origin
+                git_tag_delete(tag_name, True, auth_header)
+            else:
+                # No action taken. Skip tag and return
+                logging.warning(literals.get("git_existing_tag_keep").format(tag_name=tag_name))
+                return
+        logging.info(literals.get("git_tag")
+                     .format(tag_name=tag_name, commit_name=commit_name, branch_name=branch))
+        git_tag_add(tag_name, commit_name, auth_header=auth_header)
+
+
 def git_tag_add(tag_name: str, commit_name: str, push_to_origin: bool = True, auth_header: str = ''):
     """ Adds a tag to a git commit
 
@@ -200,7 +232,7 @@ def git_tag_exist(tag_name: str, auth_header: str = '', remote_name: str = 'orig
         """
     result: str = devops_toolset.tools.cli.call_subprocess_with_result(commands.get("git_tag_check").format(
         remote_name=remote_name,
-        auth=auth_header,
+        auth=commands.get("git_auth").format(auth_header=auth_header),
         tag_name=tag_name
     ))
 

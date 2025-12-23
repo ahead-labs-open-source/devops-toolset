@@ -4,12 +4,14 @@ import json
 import logging
 import os
 import pathlib
+import re
 import xml.etree.ElementTree as ElementTree
-
 from devops_toolset.core.app import App
 from devops_toolset.core.LiteralsCore import LiteralsCore
 from devops_toolset.filesystem.Literals import Literals as FileSystemLiterals
 from devops_toolset.project_types.wordpress.Literals import Literals as WordpressLiterals
+from re import Match
+from typing import Union
 
 
 app: App = App()
@@ -98,6 +100,26 @@ def update_xml_file_entity_text(entity_xpath: str, entity_value: str, xml_file_p
     entity = xml_tree.find(entity_xpath)
     entity.text = entity_value
     xml_tree.write(xml_file_path)
+
+
+def search_regex_in_text_file(regex: str, file_path: str) -> tuple[bool, Union[Match[str], None]]:
+    """Searches a regular expression inside a text file.
+
+    Args:
+        regex: Regex to be searched in the text file.
+        file_path: Path to the file.
+
+    Returns:
+        True if the regex is found inside the text file and match.
+    """
+
+    with open(file_path, "r") as file:
+        match = re.search(regex, file.read())
+
+        if match is None:
+            return False, None
+        else:
+            return True, match
 
 
 if __name__ == "__main__":

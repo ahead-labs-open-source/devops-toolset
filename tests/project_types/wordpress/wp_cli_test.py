@@ -401,6 +401,28 @@ def test_convert_wp_parameter_raw(value, expected):
 
 # endregion
 
+
+# region convert_wp_parameter_autoload
+
+
+@pytest.mark.parametrize("value, expected", [
+    (True, "--send-email"),
+    (False, "")])
+def test_convert_wp_parameter_send_email(value, expected):
+    """When True , returns a --send-email.
+    When False , returns an empty string.
+    """
+
+    # Arrange
+
+    # Act
+    result = sut.convert_wp_parameter_send_email(value)
+
+    # Assert
+    assert result == expected
+
+# endregion
+
 # region convert_wp_parameter_skip_check
 
 

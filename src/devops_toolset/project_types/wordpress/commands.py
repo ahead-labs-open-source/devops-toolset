@@ -51,9 +51,12 @@ class Commands(ValueDictsBase):
         "wpcli_plugin_install": "wp plugin install {source} --path={path} {force} {activate} {debug_info}",
         "wpcli_rewrite_structure": "wp rewrite structure {structure} --path={path} {debug_info}",
         "wpcli_theme_install": "wp theme install {source} --path={path} {activate} --force {debug_info}",
-        "wp_theme_src_build": "gulp build --theme-slug=\"{theme_slug}\" --dist=\"{path}\"",
-        "wp_theme_src_watch":
-            "gulp watch --theme-slug=\"{theme_slug}\" --dev-proxy=\"{local_web_server}\" --wordpress-path=\"{path}\"",
+        "wpcli_theme_is_installed": "wp theme is-installed {name} --path={path} {debug_info}",
+        "wpcli_theme_list_json": "wp theme list --format=json --path={path} {debug_info}",
+        "wpcli_theme_list_count_name": "wp theme list --format=count {field_name} --path={path} {debug_info}",
+        "wp_theme_src_build": "npm run build",
+        "wp_theme_src_build_production": "npm run build-production",
+        "wp_theme_src_watch": "npm run watch",
         "wp_user_create": "wp user create {user_login} {user_email} "
                           "{role} {display_name} {first_name} {last_name} {send_email} --path={path} {debug_info}",
         "wp_user_get": "wp user get {user_login} --format=json --path={path} {debug_info}"

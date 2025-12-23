@@ -209,6 +209,103 @@ def test_git_init_when_not_skip_and_not_init_git_then_call_subprocess(
 
 # endregion
 
+# region git_tag()
+
+
+@patch("logging.info")
+@patch("devops_toolset.tools.git_flow.is_branch_suitable_for_tagging")
+@patch("devops_toolset.tools.git.git_tag_add")
+@patch("devops_toolset.tools.git.git_tag_exist")
+def test_git_tag_calls_git_tools_tag_add(
+        git_tag_exist_mock, git_tag_add_mock, git_flow_suitable_branch_mock, _, gitdata):
+    """ Given a commit name, tag name and branch name, calls git.git_tag_add() """
+    # Arrange
+    branch = gitdata.branch
+    commit = gitdata.commit
+    tag = gitdata.tag
+    auth_header = gitdata.auth_header
+    git_flow_suitable_branch_mock.return_value = True
+    git_tag_exist_mock.return_value = False
+
+    # Act
+    sut.git_tag(commit, tag, branch, auth_header)
+
+    # Assert
+    git_tag_add_mock.assert_called_with(tag, commit, auth_header=auth_header)
+
+
+@patch("logging.info")
+@patch("devops_toolset.tools.git_flow.is_branch_suitable_for_tagging")
+@patch("devops_toolset.tools.git.git_tag_add")
+@patch("devops_toolset.tools.git.git_tag_exist")
+def test_git_tag_not_calls_git_tools_tag_add(
+        git_tag_exist_mock, git_tag_add_mock, git_flow_suitable_branch_mock, _, gitdata):
+    """ Given a commit name, tag name and branch name, calls git.git_tag_add() """
+    # Arrange
+    branch = gitdata.branch
+    commit = gitdata.commit
+    tag = gitdata.tag
+    auth_header = gitdata.auth_header
+    git_flow_suitable_branch_mock.return_value = False
+    git_tag_exist_mock.return_value = False
+
+    # Act
+    sut.git_tag(commit, tag, branch, auth_header)
+
+    # Assert
+    git_tag_add_mock.assert_not_called()
+
+
+@patch("logging.info")
+@patch("logging.warning")
+@patch("devops_toolset.tools.git_flow.is_branch_suitable_for_tagging")
+@patch("devops_toolset.tools.git.git_tag_add")
+@patch("devops_toolset.tools.git.git_tag_exist")
+@patch("devops_toolset.tools.git.git_tag_delete")
+def test_git_tag_calls_git_tools_tag_delete_when_tag_exists_and_overwrite_tag \
+                (git_tag_delete_mock, git_tag_exist_mock, git_tag_add_mock, git_flow_suitable_branch_mock,
+                 logging_warning_mock, _, gitdata):
+    """ Given a commit name, tag name, branch name and overwrite_tag, calls git.git_tag_delete() """
+    # Arrange
+    branch = gitdata.branch
+    commit = gitdata.commit
+    tag = gitdata.tag
+    auth_header = gitdata.auth_header
+    git_flow_suitable_branch_mock.return_value = True
+    git_tag_exist_mock.return_value = True
+
+    # Act
+    sut.git_tag(commit, tag, branch, auth_header)
+
+    # Assert
+    git_tag_delete_mock.assert_called_with(tag, True, auth_header)
+
+
+@patch("logging.info")
+@patch("logging.warning")
+@patch("devops_toolset.tools.git_flow.is_branch_suitable_for_tagging")
+@patch("devops_toolset.tools.git.git_tag_add")
+@patch("devops_toolset.tools.git.git_tag_exist")
+@patch("devops_toolset.tools.git.git_tag_delete")
+def test_git_tag_warns_when_tag_exists_and_not_overwrite_tag\
+                (git_tag_delete_mock, git_tag_exist_mock, git_tag_add_mock, git_flow_suitable_branch_mock,
+                 logging_warning_mock, _, gitdata):
+    """ Given a commit name, tag name, branch name and not overwrite_tag, then not tag anything """
+    # Arrange
+    branch = gitdata.branch
+    commit = gitdata.commit
+    tag = gitdata.tag
+    auth_header = gitdata.auth_header
+    git_flow_suitable_branch_mock.return_value = True
+    git_tag_exist_mock.return_value = True
+
+    # Act
+    sut.git_tag(commit, tag, branch, auth_header, False)
+
+    # Assert
+    git_tag_add_mock.assert_not_called()
+
+# endregion git_tag()
 
 # region git_tag_add()
 
@@ -296,13 +393,13 @@ def test_git_tag_exist_calls_git_tag_check_command(call_subprocess, clidata):
     """ Calls git_tag_check command with necessary parameters """
     # Arrange
     tag_name = 'test'
-    auth_header = clidata.auth_header
+    auth_header = commands.get("git_auth").format(auth_header=clidata.auth_header)
     remote_name = 'origin'
     expected_command = commands.get("git_tag_check").format(
         remote_name=remote_name, auth=auth_header, tag_name=tag_name)
 
     # Act
-    sut.git_tag_exist(tag_name, auth_header)
+    sut.git_tag_exist(tag_name, clidata.auth_header)
 
     # Assert
     call_subprocess.assert_called_with(expected_command)
@@ -339,7 +436,6 @@ def test_git_tag_exist_returns_false_when_result_is_none(call_subprocess, clidat
 
 
 # endregion git_tag_exist()
-
 
 # region get_current_branch_simplified()
 

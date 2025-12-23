@@ -6,6 +6,10 @@
 
     "type": "object",
     "properties": {
+        "$schema": {
+            "type": "string",
+            "format": "uri"
+        },
         "key": {
             "type": "string"
         },

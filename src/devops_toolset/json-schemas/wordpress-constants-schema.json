@@ -5,6 +5,10 @@
     "description": "WordPress site constants to generate and deploy a site automatically",
     "type": "object",
     "properties": {
+        "$schema": {
+            "type": "string",
+            "format": "uri"
+        },
         "defaults": {
             "type": "object",
             "properties": {

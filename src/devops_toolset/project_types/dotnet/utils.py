@@ -1,8 +1,6 @@
 """ Dotnet utilities """
 
 import devops_toolset.filesystem.parsers as parsers
-import devops_toolset.tools.git_flow as gitflow
-import devops_toolset.tools.git as git
 import logging
 import os.path
 import pathlib
@@ -77,37 +75,6 @@ def get_csproj_project_version(csproj_path: str, environment_variable_name: str 
     platform_specific.create_environment_variables(version_environment_variable)
 
     return version["Version"]
-
-
-def git_tag(commit_name: str, tag_name: str, branch: str, auth_header: str, overwrite_tag: bool = True):
-    """ Does a git tag over a checkout branch's commit
-        Args:
-            commit_name: Name of the commit.
-            Git will need the checksum name, or part of it.
-            F.I: If the commit name is 9fceb02d0ae598e95dc970b74767f19372d61af8, the checksum will be 9fceb02.
-            tag_name: Name of the tag to be added.
-            branch: The simplified name of the git branch.
-            auth_header: Includes an auth header into the git command (needed for elevated privilege operations).
-            Normally, it will be ["basic <BASIC_AUTH_TOKEN>"] or "bearer <BEARER_TOKEN>"]
-            overwrite_tag: Tag will be moved to the <commit_name> if exists. False will maintain the current tag.
-            Default behaviour is True -> move tag if exist on remote
-    """
-    if gitflow.is_branch_suitable_for_tagging(branch):
-        if git.git_tag_exist(tag_name, auth_header):
-            logging.warning(literals.get("dotnet_git_tag_exists").format(tag_name=tag_name))
-            # Tag exists. Depending on the overwrite_tag behaviour we'll move the tag or not
-            if overwrite_tag:
-                logging.warning(literals.get("dotnet_git_existing_tag_move").format(tag_name=tag_name,
-                                                                                    commit_name=commit_name))
-                # Delete current tag on origin
-                git.git_tag_delete(tag_name, True, auth_header)
-            else:
-                # No action taken. Skip tag and return
-                logging.warning(literals.get("dotnet_git_existing_tag_keep").format(tag_name=tag_name))
-                return
-        logging.info(literals.get("dotnet_git_tag")
-                     .format(tag_name=tag_name, commit_name=commit_name, branch_name=branch))
-        git.git_tag_add(tag_name, commit_name, auth_header=auth_header)
 
 
 if __name__ == "__main__":
