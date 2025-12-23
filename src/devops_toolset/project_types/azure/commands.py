@@ -19,6 +19,7 @@ class Commands(ValueDictsBase):
 
     # Add your dotnet commands dictionaries here
     _commands = {
+        # API Management (APIM)
         "azure_cli_apim_exists": "az apim show --resource-group {resource_group_name} --name {name}",
         "azure_cli_apim_get_apis": "az apim api list --resource-group {resource_group_name} --service-name {name}",
         "azure_cli_db_mysql_flexible_server_execute":
