@@ -1,4 +1,5 @@
 """Contains several tools and utils for WordPress Themes"""
+
 import devops_toolset.filesystem.parsers as parsers
 import devops_toolset.filesystem
 import devops_toolset.project_types.node.npm as npm
@@ -15,69 +16,68 @@ import devops_toolset.project_types.wordpress.wptools as wptools
 import re
 import devops_toolset.tools.git as git_tools
 
-
 from devops_toolset.core.app import App
 from devops_toolset.core.commands_core import CommandsCore
 from devops_toolset.core.literals_core import LiteralsCore
-from devops_toolset.devops_platforms import constants as devops_platforms_constants
 from devops_toolset.devops_platforms.azuredevops.literals import Literals as PlatformLiterals
 from devops_toolset.project_types.wordpress.basic_structure_starter import BasicStructureStarter
 from devops_toolset.project_types.wordpress.commands import Commands as WordpressCommands
 from devops_toolset.project_types.wordpress.literals import Literals as WordpressLiterals
 from devops_toolset.tools import cli
+from typing import Union
 
 app: App = App()
+platform_specific_environment = app.load_platform_specific("environment")
 platform_specific_restapi = app.load_platform_specific("restapi")
 literals = LiteralsCore([WordpressLiterals])
 platform_literals = LiteralsCore([PlatformLiterals])
 commands = CommandsCore([WordpressCommands])
 
 
-def build_theme(themes_config: dict, theme_path: str, root_path: str):
+def build_theme(theme_config: dict, theme_path: str, root_path: str):
     """ Builds a theme source into a packaged theme distribution using npm tasks
 
     Args:
-        themes_config: Themes configuration.
+        theme_config: Theme configuration.
         theme_path: Path to the theme in the WordPress repository.
         root_path: Path to the project root.
     """
+
     logging.info(literals.get("wp_looking_for_src_themes"))
 
-    # Get configuration data and paths
-    src_theme_list = list(filter(lambda elem: elem["source_type"] == "src", themes_config))
-
-    if len(src_theme_list) == 0:
+    if theme_config == {}:
         # Src theme not present
         logging.info(literals.get("wp_no_src_themes"))
         return
 
-    src_theme = src_theme_list[0]
-    theme_path_obj = pathlib.Path(theme_path)
-    theme_path_src = pathlib.Path.joinpath(theme_path_obj, src_theme["source"])
-    theme_path_dist = pathlib.Path.joinpath(theme_path_src, "dist")
-    theme_path_zip = pathlib.Path.joinpath(theme_path_obj, f"{src_theme['name']}.zip")
+    if 'build' not in theme_config or not theme_config["build"]:
+        # Theme will not be build
+        logging.info(literals.get("wp_theme_src_will_not_be_built"))
+        return
+
+    theme_path_src = pathlib.Path(theme_path, theme_config["source"])
+    theme_path_dist = pathlib.Path(theme_path_src, "dist")
+    theme_path_zip = pathlib.Path(theme_path, f"{theme_config['name']}.zip")
 
     if os.path.exists(theme_path_src):
 
-        theme_slug = src_theme["name"]
+        theme_slug = theme_config["name"]
 
-        # Change to the the theme's source directory
+        # Change to the theme's source directory
         os.chdir(theme_path_src)
 
         # Run npm install from the package.json path
         npm.install()
 
         # Run npm run build to execute the task build with the required parameters
-        cli.call_subprocess(commands.get("wp_theme_src_build").format(
-            theme_slug=theme_slug,
-            path=theme_path_dist
-        ), log_before_out=[literals.get("wp_gulp_build_before").format(theme_slug=theme_slug)],
-            log_after_out=[literals.get("wp_gulp_build_after").format(theme_slug=theme_slug)],
-            log_after_err=[literals.get("wp_gulp_build_error").format(theme_slug=theme_slug)])
+        cli.call_subprocess(commands.get("wp_theme_src_build_production"),
+                            log_before_out=[literals.get("wp_webpack_build_before").format(theme_slug=theme_slug)],
+                            log_after_out=[literals.get("wp_webpack_build_after").format(theme_slug=theme_slug)],
+                            log_after_err=[literals.get("wp_webpack_build_error").format(theme_slug=theme_slug)])
 
         # Zip dist
         devops_toolset.filesystem.zip.zip_directory(
-            theme_path_dist.as_posix(), theme_path_zip.as_posix(), f"{theme_slug}/")
+            theme_path_dist.as_posix(), theme_path_zip.as_posix())
 
         # Replace project.xml version with the one in the package.json file
         package_json_path = str(pathlib.Path.joinpath(pathlib.Path(theme_path_src, "package.json")))
@@ -109,7 +109,7 @@ def check_theme_configuration(theme: dict) -> bool:
     return True
 
 
-def check_themes_configuration(themes: dict) -> bool:
+def check_themes_activation_configuration(themes: dict) -> bool:
     """Checks that the themes configuration is correct.
 
     Args:
@@ -139,34 +139,35 @@ def check_themes_configuration(themes: dict) -> bool:
     return True
 
 
-def create_development_theme(theme_configuration: dict, root_path: str, constants: dict):
+def create_development_theme(site_configuration: dict, root_path: str, constants: dict) -> [dict, None]:
     """ Creates the structure of a development theme.
 
     Args:
-        theme_configuration: The themes configuration node
+        site_configuration: Site configuration
         root_path: The desired destination path of the theme
         constants: WordPress constants.
+
+    Returns: Theme configuration or None if src theme is not found.
     """
 
     destination_path = get_themes_path_from_root_path(root_path, constants)
 
     # Extract theme name from the themes configuration dict
-    src_theme = list(filter(lambda t: t["source_type"] == "src", theme_configuration))
-    if src_theme.__len__() == 1:
-        src_theme = src_theme[0]
+    src_theme = get_src_theme(site_configuration["settings"]["themes"])
+    if src_theme is not None:
         theme_slug = src_theme["source"]
 
         # Check if a structure file is available (should be named as [theme-slug]-wordpress-theme-structure
-        structure_file_name = f'{theme_slug}-wordpress-theme-structure.json'
-        structure_file_path = str(pathlib.Path.joinpath(pathlib.Path(root_path), structure_file_name))
+        structure_file = wp_constants.FileNames.WORDPRESS_DEVELOPMENT_THEME_STRUCTURE_FILE.format(theme_slug=theme_slug)
+        structure_file_path = str(pathlib.Path(root_path, structure_file))
 
         # Create the structure based on the theme_name
-        start_basic_theme_structure(destination_path, theme_slug, structure_file_path)
+        scaffold_basic_theme_structure(destination_path, site_configuration, structure_file_path)
 
-        # Replace necessary theme files with the theme name.
-        set_theme_metadata(root_path, src_theme)
+        return src_theme
     else:
         logging.warning(literals.get("wp_src_theme_not_found"))
+        return None
 
 
 def download_wordpress_theme(theme_config: dict, destination_path: str, **kwargs):
@@ -174,13 +175,14 @@ def download_wordpress_theme(theme_config: dict, destination_path: str, **kwargs
 
     NOTE: The URL must download a zip file that contains the theme. If the ZIP
         contains a non-standard inner structure, the calling process will
-        produce side-effects.
+        produce side effects.
 
     Args:
         theme_config: Theme configuration.
         destination_path: Path where the theme will be downloaded.
         kwargs: Platform-specific arguments
     """
+
     source_type: str = theme_config["source_type"]
 
     if source_type == "feed":
@@ -188,14 +190,55 @@ def download_wordpress_theme(theme_config: dict, destination_path: str, **kwargs
         matches = re.search(r"https:\/\/dev.azure.com\/(\w+)\/", feed_config["organization_url"])
         organization = matches.group(1)
         if "azdevops_user" in kwargs and "azdevops_token" in kwargs:
-            platform_specific_restapi.get_last_artifact(organization, feed_config["name"], feed_config["package"],
-                                                        destination_path, kwargs["azdevops_user"],
-                                                        kwargs["azdevops_token"])
+            # Download package file
+            file_name, file_path = platform_specific_restapi.get_last_artifact(
+                organization, feed_config["name"], feed_config["package"], destination_path,
+                kwargs["azdevops_user"], kwargs["azdevops_token"])
+
+            # Extract theme zip from package and delete package
+            theme_zip_path = f"{theme_config['feed']['package']}/{theme_config['feed']['name']}.zip"
+            devops_toolset.filesystem.zip.extract_file_from_zip(file_path, theme_zip_path, destination_path)
+            os.remove(file_path)
         else:
             logging.warning(platform_literals.get("azdevops_token_not_found"))
             logging.warning(platform_literals.get("azdevops_download_package_manually"))
     elif source_type == "url":
         paths.download_file(theme_config["source"], destination_path, f"{theme_config['name']}.zip")
+
+
+def get_environment_by_type(site_configuration: dict, environment: wp_constants.ProjectEnvironmentType) \
+        -> Union[dict, None]:
+    """Gets an environment node from the site configuration based on its type.
+
+    Args
+        site_configuration: Site configuration
+        environment: Name of the environment to be retrieved
+    """
+
+    environment_name = str(environment.name).lower()
+    filtered_environments = list(filter(lambda e: e["type"] == environment_name, site_configuration["environments"]))
+    if len(filtered_environments) == 1:
+        return filtered_environments[0]
+    else:
+        raise ValueError(literals.get("wp_environment_of_type_not_found").format(type=environment.name))
+
+
+def get_src_theme(themes: dict) -> Union[dict, None]:
+    """Gets src theme node from the site configuration.
+
+    Args
+        themes: Themes node from site configuration
+
+    Returns:
+        Src theme configuration or None if not found
+    """
+
+    filtered_themes = list(filter(lambda t: t["source_type"] == "src", themes))
+    if len(filtered_themes) == 1:
+        return filtered_themes[0]
+    else:
+        logging.warning(literals.get("wp_theme_src_not_found"))
+        return None
 
 
 def get_themes_path_from_root_path(root_path: str, constants: dict) -> str:
@@ -239,11 +282,17 @@ def install_themes_from_configuration_file(site_configuration: dict, environment
     themes_path = pathlib.Path.joinpath(root_path_obj, global_constants["paths"]["content"]["themes"])
     debug_info = environment_config["wp_cli_debug"]
 
-    # Check themes configuration
-    if not check_themes_configuration(themes):
+    # Check themes activation configuration
+    if not check_themes_activation_configuration(themes):
         return
 
     for theme in themes:
+        # Check if theme is already installed
+        if int(wp_cli.theme_list_count(wordpress_path, debug_info, theme["name"])) == 1:
+            continue
+
+        logging.info(literals.get("wp_themes_installing_theme").format(theme=theme["name"]))
+
         # Check theme configuration
         if not check_theme_configuration(theme):
             continue
@@ -257,11 +306,11 @@ def install_themes_from_configuration_file(site_configuration: dict, environment
         if theme["source_type"] in ["url", "feed"]:
             download_wordpress_theme(theme, str(themes_path), **kwargs)
 
-        # Get template for the theme if it has one
-        style_content: bytes = devops_toolset.filesystem.zip.read_text_file_in_zip(
-            theme_path, f"{theme['name']}/style.css")
-        metadata: dict = devops_toolset.filesystem.parsers.parse_theme_metadata(style_content, ["Template", "Version"])
-        theme["template"] = metadata["Template"] if "Template" in metadata else None
+        # Get template/framework for the theme if it has one
+        style_content: bytes = devops_toolset.filesystem.zip.read_text_file_in_zip(theme_path, "style.css")
+        metadata: dict = parse_theme_metadata(style_content.decode("utf-8"))
+        theme["template"] = metadata["Template"] \
+            if "Template" in metadata and metadata["Template"] is not None else None
         theme["version"] = metadata["Version"]
 
     # Set child theme and parent theme, or just child theme (the one to be activated)
@@ -289,6 +338,62 @@ def install_themes_from_configuration_file(site_configuration: dict, environment
     # Warn the user we are skipping the backup dump
     else:
         logging.warning(literals.get("wp_wpcli_export_db_skipping_as_set").format(dump="theme"))
+
+
+def parse_theme_metadata(style_css_content: str, add_environment_variables: bool = False):
+    """Parses metadata from theme's main style sheet style.css.
+
+    Args:
+        style_css_content: Content of style.css file.
+        add_environment_variables: If True adds every metadata value as an
+            environment variable.
+
+    Returns
+        dict with metadata extracted in key-value pairs
+    """
+    logging.info(literals.get("wp_parsing_theme_metadata"))
+
+    metadata: dict = wp_constants.DefaultValues.WORDPRESS_METADATA_EMPTY
+    environment_variables: dict = {}
+
+    for key, value in metadata.items():
+        regex = key + wp_constants.Expressions.WORDPRESS_REGEX_THEME_METADATA_PARSE
+        logging.debug(literals.get("wp_parsing_theme_regex").format(regex=regex))
+        matches = re.search(regex, style_css_content)
+
+        if matches is not None and matches.group(1):
+            value = matches.group(1)
+            metadata[key] = value
+            logging.info(literals.get("wp_parsing_theme_matches_found").format(key=key, value=value))
+
+            if add_environment_variables:
+                env_key = f"{wp_constants.DefaultValues.WORDPRESS_ENV_VAR_PREFIX}_" \
+                          f"{wp_constants.DefaultValues.WORDPRESS_METADATA_PREFIX}_" \
+                          f"{value.upper().replace(' ', '_')}"
+                environment_variables[env_key] = value
+        else:
+            logging.warning(literals.get("wp_parsing_theme_no_matches_found").format(key=key))
+
+    if len(environment_variables) > 0:
+        platform_specific_environment.create_environment_variables(environment_variables)
+
+    return metadata
+
+
+def parse_theme_metadata_from_file(style_css_path: str, add_environment_variables: bool = False):
+    """Parses metadata from theme's main style sheet style.css.
+
+    Args:
+        style_css_path: Path to file style.css.
+        add_environment_variables: If True adds every metadata value as an
+            environment variable.
+
+    Returns
+        dict with metadata extracted in key-value pairs"""
+
+    with open(style_css_path, "r") as style:
+        content = style.read()
+        return parse_theme_metadata(content, add_environment_variables)
 
 
 def purge_theme_zip_installation_file_if_generated(theme_config: dict):
@@ -351,7 +456,7 @@ def replace_theme_meta_data_in_scss_file(file_path: str, src_theme_configuration
     if "tags" in src_theme_configuration:
         replacements["Tags"] = ", ".join(src_theme_configuration["tags"])
 
-    replace_theme_meta_data(file_path, replacements, wp_constants.theme_metadata_parse_regex)
+    replace_theme_meta_data(file_path, replacements, wp_constants.Expressions.WORDPRESS_REGEX_THEME_METADATA_PARSE)
 
 
 def replace_theme_meta_data(path: str, replacements: dict, regex_str: str):
@@ -359,7 +464,7 @@ def replace_theme_meta_data(path: str, replacements: dict, regex_str: str):
     Args:
         path: The file path to be replaced.
         replacements: The replacements content.
-        regex_str: The regex string used to match and replace the replacements dict.
+        regex_str: The regex string used to match and replace the replacements' dict.
     """
 
     replace_file = open(path, 'r', newline='\n')
@@ -394,77 +499,71 @@ def replace_theme_slug_in_functions_php(file_path: str, src_theme_configuration:
     core_php_file = open(file_path, 'r')
     file_content = core_php_file.read()
 
-    file_content = re.sub(wp_constants.functions_php_mytheme_regex, theme_slug, file_content)
+    file_content = re.sub(wp_constants.Expressions.WORDPRESS_REGEX_FUNCTIONS_PHP_MYTHEME, theme_slug, file_content)
 
     # Write replaced content to the file
     with open(file_path, 'w', newline='\n') as core_php_file:
         core_php_file.write(file_content)
 
 
-def set_theme_metadata(root_path: str, src_theme_configuration: dict):
-    """ Replaces theme meta-data values on required theme files
-    Args:
-        root_path: The path of the project
-        src_theme_configuration: The src theme configuration to be set.
-    """
-
-    constants = wptools.get_constants()
-    theme_slug = src_theme_configuration["source"]
-
-    # Get scss file path and content from the theme slug
-    themes_path = pathlib.Path.joinpath(pathlib.Path(root_path), constants["paths"]["content"]["themes"])
-
-    # Replace meta-data obtained inside theme .scss
-    scss_file_path = str(pathlib.Path.joinpath(themes_path, theme_slug, "src", "assets", "css", "style.scss"))
-    replace_theme_meta_data_in_scss_file(scss_file_path, src_theme_configuration)
-
-    # Replace meta-data on the package.json file
-    package_json_file_path = str(pathlib.Path.joinpath(themes_path, theme_slug, "package.json"))
-    replace_theme_meta_data_in_package_file(package_json_file_path, src_theme_configuration)
-
-    # Replace theme slug on the functions_core.php
-    functions_php_file_path = str(pathlib.Path.joinpath(themes_path, theme_slug, "src", "functions_php", "_core.php"))
-    replace_theme_slug_in_functions_php(functions_php_file_path, src_theme_configuration)
-
-    # Update project.xml name
-    project_xml_path = pathlib.Path.joinpath(pathlib.Path(root_path), "project.xml").as_posix()
-    devops_toolset.filesystem.tools.update_xml_file_entity_text("./name", theme_slug, project_xml_path)
-
-
-def start_basic_theme_structure(path: str, theme_name: str, structure_file_path: str = None) -> None:
+def scaffold_basic_theme_structure(
+        path: str, site_configuration: dict, structure_file_path: str = None) -> None:
     """ Creates a basic structure of a wordpress development theme based on its default theme-structure.json
 
         Args:
             path: Full path where the structure will be created
-            theme_name: Name of the theme to be used to create the root folder
+            site_configuration: Site configuration
             structure_file_path: Optional parameter containing the structure file path to be used. If ignored, the
-            default structure file will be used.
+                default structure file will be used.
         """
 
-    # Parse theme structure configuration
-    if pathlib.Path.exists(pathlib.Path(structure_file_path)):
-        theme_structure = wptools.get_site_configuration(structure_file_path)
-        logging.info(literals.get("wp_theme_structure_creating_from_file").format(theme_name=theme_name,
-                                                                                  file_name=structure_file_path))
-    else:
-        theme_structure = wptools.get_project_structure(
-            devops_platforms_constants.Urls.DEFAULT_WORDPRESS_DEVELOPMENT_THEME_STRUCTURE)
-        logging.info(literals.get("wp_theme_structure_creating_from_default_file").format(
-            resource=devops_platforms_constants.Urls.DEFAULT_WORDPRESS_DEVELOPMENT_THEME_STRUCTURE))
+    # Get src/development theme
+    src_theme = get_src_theme(site_configuration["settings"]["themes"])
 
-    project_starter = BasicStructureStarter()
+    # Parse theme structure configuration
+    if pathlib.Path(structure_file_path).exists():
+        theme_structure = wptools.get_site_configuration(structure_file_path)
+        logging.info(literals.get("wp_theme_structure_creating_from_file").format(
+            theme_name=src_theme["name"],
+            file_name=structure_file_path))
+    else:
+        token_replacements: dict = {"mytheme": src_theme["name"]}
+        theme_structure = \
+            wptools.get_default_project_structure(wp_constants.ProjectStructureType.THEME, token_replacements)
+        logging.info(literals.get("wp_theme_structure_creating_from_default_file").format(resource="default file"))
+
+    # Set token replacements
+    dev_environment = get_environment_by_type(site_configuration, wp_constants.ProjectEnvironmentType.DEVELOPMENT)
+    pro_environment = get_environment_by_type(site_configuration, wp_constants.ProjectEnvironmentType.PRODUCTION)
+    project_config = site_configuration["settings"]["project"]
+    token_replacements: dict = {
+        "development-environment-base-url": dev_environment["base_url"],
+        "production-environment-url": pro_environment["wp_config"]["site_url"]["value"],
+        "project-name": project_config["name"],
+        "project-version": project_config["version"],
+        "theme-author": src_theme["author"],
+        "theme-description": src_theme["description"],
+        "theme-minimum-wordpress-version": src_theme["minimum-wordpress-version"],
+        "theme-minimum-wordpress-version-tested": src_theme["minimum-wordpress-version-tested"],
+        "theme-minimum-php-version": src_theme["minimum-php-version"],
+        "theme-name": src_theme["name"],
+        "theme-tags": src_theme["tags"],
+        "theme-url": src_theme["url"],
+        "theme-version": src_theme["version"],
+    }
+    project_starter = BasicStructureStarter(token_replacements)
 
     # Change the main folder's name of the theme to the theme_name
-    theme_structure["items"][0]["name"] = theme_name
-
-    # Purge .gitkeep
-    git_tools.purge_gitkeep(pathlib.Path(path).as_posix())
+    theme_structure["items"][0]["name"] = src_theme["name"]
 
     # Iterate through every item recursively
     for item in theme_structure["items"]:
         project_starter.add_item(item, path)
 
-    logging.info(literals.get("wp_created_theme_structure").format(theme_name=theme_name))
+    # Purge .gitkeep
+    git_tools.purge_gitkeep(pathlib.Path(path).as_posix())
+
+    logging.info(literals.get("wp_created_theme_structure").format(theme_name=src_theme["name"]))
 
 
 def triage_themes(themes: dict) -> (dict, dict):
@@ -485,7 +584,7 @@ def triage_themes(themes: dict) -> (dict, dict):
             parent_guess = theme["name"]
         if theme["activate"]:
             child = theme
-            if theme["template"]:
+            if "template" in theme:
                 parent_guess = theme["template"]
 
         if not theme["activate"] and not theme["template"] and theme["name"] == parent_guess:

@@ -6,7 +6,7 @@ import devops_toolset.project_types.node.npm as sut
 from devops_toolset.core.CommandsCore import CommandsCore
 from devops_toolset.core.LiteralsCore import LiteralsCore
 from devops_toolset.project_types.node.commands import Commands as NodeCommands
-from devops_toolset.project_types.node.Literals import Literals as NodeLiterals
+from devops_toolset.project_types.node.literals import Literals as NodeLiterals
 from devops_toolset.core.app import App
 
 app: App = App()

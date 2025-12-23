@@ -2,7 +2,7 @@
 import os
 from unittest.mock import patch, call, mock_open
 from devops_toolset.core.LiteralsCore import LiteralsCore
-from devops_toolset.project_types.wordpress.Literals import Literals as WordpressLiterals
+from devops_toolset.project_types.wordpress.literals import Literals as WordpressLiterals
 from tests.project_types.wordpress.conftest import mocked_requests_get
 from devops_toolset.project_types.wordpress.basic_structure_starter import BasicStructureStarter
 
@@ -56,9 +56,10 @@ def test_add_item_given_parameters_should_call_condition_met_when_item_has_child
     # Arrange
     item = {"type": "directory", "name": "foo_directory"}
     base_path = wordpressdata.wordpress_path
-    with patch.object(os.path, "exists", return_value=True):
+    token_replacements = wordpressdata.token_replacements
+    with patch.object(path_tools, "is_valid_path", return_value=True):
         # Act
-        BasicStructureStarter().add_item(item, base_path)
+        BasicStructureStarter(token_replacements).add_item(item, base_path)
         # Assert
         condition_met_mock.assert_not_called()
 
@@ -71,14 +72,15 @@ def test_add_item_given_parameters_when_child_condition_is_false_and_have_childr
     # Arrange
     item = {"type": "directory", "name": "foo_directory", "children": [{"name": "foo_file"}]}
     base_path = wordpressdata.wordpress_path
-    expected_path_1 = pathlib.Path.joinpath(pathlib.Path(base_path), "foo_directory")
-    expected_path_2 = pathlib.Path.joinpath(pathlib.Path(expected_path_1), "foo_file")
-    with patch.object(os.path, "exists", return_value=True) as is_valid_path_mock:
+    expected_path_1 = str(pathlib.Path.joinpath(pathlib.Path(base_path), "foo_directory"))
+    expected_path_2 = str(pathlib.Path.joinpath(pathlib.Path(expected_path_1), "foo_file"))
+    token_replacements = wordpressdata.token_replacements
+    with patch.object(path_tools, "is_valid_path", return_value=True) as is_valid_path_mock:
         # Act
-        BasicStructureStarter().add_item(item, base_path)
+        BasicStructureStarter(token_replacements).add_item(item, base_path)
         # Assert
-        calls = [call(expected_path_1),
-                 call(expected_path_2)]
+        calls = [call(expected_path_1, True),
+                 call(expected_path_2, True)]
         is_valid_path_mock.assert_has_calls(calls, any_order=True)
 
 
@@ -92,10 +94,11 @@ def test_add_item_given_parameters_when_child_condition_and_type_is_directory_sh
     expected_directory = "foo_directory"
     item = {"type": "directory", "name": expected_directory, "children": [{"name": "foo_file"}]}
     base_path = wordpressdata.wordpress_path
+    token_replacements = wordpressdata.token_replacements
     expected_final_path = pathlib.Path.joinpath(pathlib.Path(base_path), "foo_directory")
     with patch.object(path_tools, "is_valid_path", return_value=False):
         # Act
-        BasicStructureStarter().add_item(item, base_path)
+        BasicStructureStarter(token_replacements).add_item(item, base_path)
         # Assert
         os_mkdir_mock.assert_called_once_with(expected_final_path)
 
@@ -111,9 +114,10 @@ def test_add_item_given_parameters_when_child_condition_and_type_is_file_should_
     expected_file = "foo_file"
     item = {"type": "file", "name": expected_file, "children": [{"name": expected_file}]}
     base_path = wordpressdata.wordpress_path
+    token_replacements = wordpressdata.token_replacements
     with patch.object(path_tools, "is_valid_path", return_value=False):
         # Act
-        BasicStructureStarter().add_item(item, base_path)
+        BasicStructureStarter(token_replacements).add_item(item, base_path)
         # Assert
         get_default_content_mock.assert_not_called()
 
@@ -132,10 +136,11 @@ def test_add_item_given_parameters_when_child_condition_and_type_is_file_should_
             "children": [{"name": expected_file}]}
     base_path = wordpressdata.wordpress_path
     m = mock_open()
+    token_replacements = wordpressdata.token_replacements
     with patch(wordpressdata.builtins_open, m, create=True):
         with patch.object(path_tools, "is_valid_path", return_value=False):
             # Act
-            BasicStructureStarter().add_item(item, base_path)
+            BasicStructureStarter(token_replacements).add_item(item, base_path)
             # Assert
             handler = m()
             handler.write.assert_called_once_with("")
@@ -146,7 +151,7 @@ def test_add_item_given_parameters_when_child_condition_and_type_is_file_should_
 # region get_default_content()
 
 
-@pytest.mark.parametrize('item, expected_value', [
+@pytest.mark.parametrize("item, expected_value", [
     ({"source": "raw", "name": "raw_name", "value": "some_raw_value"}, "some_raw_value"),
     ({"source": "from_file", "name": "file_name", "value": "file"}, "some_from_file_value"),
     ({"source": "from_url", "name": "url_name", "value": "url_resource"}, "sample text response")])
@@ -156,8 +161,9 @@ def test_get_default_content_given_item_when_source_then_return_corresponding_va
     """Given item when source has value raw, then return value content"""
     # Arrange
     mocks.requests_get_mock.side_effect = mocked_requests_get
+    token_replacements = wordpressdata.token_replacements
     # Act
-    result = BasicStructureStarter.get_default_content(item)
+    result = BasicStructureStarter(token_replacements).get_default_content(item, False)
     # Assert
     assert result == expected_value
 

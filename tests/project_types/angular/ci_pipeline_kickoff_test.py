@@ -5,7 +5,7 @@ import devops_toolset.project_types.angular.ci_pipeline_kickoff as sut
 from devops_toolset.core.CommandsCore import CommandsCore
 from devops_toolset.core.LiteralsCore import LiteralsCore
 from devops_toolset.project_types.angular.commands import Commands as AngularCommands
-from devops_toolset.project_types.angular.Literals import Literals as AngularLiterals
+from devops_toolset.project_types.angular.literals import Literals as AngularLiterals
 from devops_toolset.core.app import App
 
 app: App = App()

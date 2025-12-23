@@ -5,7 +5,7 @@ import devops_toolset.devops_platforms.sonarx as sut
 from unittest.mock import patch
 from tests.devops_platforms.conftest import mocked_requests_get
 from devops_toolset.core.LiteralsCore import LiteralsCore
-from devops_toolset.devops_platforms.Literals import Literals as DevopsLiterals
+from devops_toolset.devops_platforms.literals import Literals as DevopsLiterals
 
 
 literals = LiteralsCore([DevopsLiterals])

@@ -25,7 +25,7 @@ class FileNames(object):
 
 
 class FileType(Enum):
-    """Defines the file type of a file to be written.
+    """Defines the file type of file to be written.
 
     To be added to w or b options when using builtins.open().
 

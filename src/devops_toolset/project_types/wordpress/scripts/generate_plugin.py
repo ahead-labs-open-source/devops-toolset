@@ -8,7 +8,6 @@ import os
 import pathlib
 
 import requests
-from clint.textui import prompt
 
 import devops_toolset.core.log_tools
 import devops_toolset.tools.git as git_tools
@@ -19,9 +18,10 @@ import devops_toolset.tools.cli as cli
 import devops_toolset.tools.devops_toolset_utils
 from devops_toolset.core.literals_core import LiteralsCore
 from devops_toolset.core.app import App
-from devops_toolset.devops_platforms.constants import Urls
+from devops_toolset.project_types.wordpress.constants import Urls
 from devops_toolset.project_types.wordpress.literals import Literals as WordpressLiterals
 from devops_toolset.project_types.wordpress.wp_plugin_tools import create_plugin
+import devops_toolset.project_types.wordpress.scripts.script_common as common
 
 app: App = App()
 literals = LiteralsCore([WordpressLiterals])
@@ -39,33 +39,9 @@ def main(root_path: str):
 
     # Check necessary files using required files engine
     required_files_pattern_suffixes: list = ["*plugin-config.json", "*plugin-structure.json"]
-    required_files_not_present: list[str] = paths.files_exist_filtered(
-        root_path, False, required_files_pattern_suffixes)
 
-    if len(required_files_not_present) > 0:
-        devops_toolset.core.log_tools.log_indented_list(literals.get("wp_required_files_not_found_detail")
-                                                        .format(path=root_path),
-                                                        required_files_not_present,
-                                                        devops_toolset.core.log_tools.LogLevel.warning)
-
-        # Ask to use defaults
-        use_defaults: bool = prompt.yn(literals.get("wp_use_default_files"))
-
-        # If not using defaults, exit
-        if not use_defaults:
-            logging.critical(literals.get("wp_required_files_mandatory"))
-            raise ValueError(literals.get("wp_required_files_not_found").format(path=root_path))
-
-        # Download defaults from GitHub
-        for file in required_files_not_present:
-            url = Urls.plugin_bootstrap_required_files[file]
-            file_name = paths.get_file_name_from_url(url)
-            file_path = pathlib.Path.joinpath(pathlib.Path(root_path), file_name)
-
-            logging.info(literals.get("wp_downloading_default_file").format(file=file, url=url))
-            response: requests.Response = requests.get(url)
-            with open(file_path, "wb") as fw:
-                fw.write(response.content)
+    # Check required files and prompt user for downloading, if not present
+    common.check_required_files(required_files_pattern_suffixes, root_path, Urls.PLUGIN_BOOTSTRAP_REQUIRED_FILES)
 
     # Get plugin configuration file and parse it
     plugin_config: dict = get_and_parse_required_plugin_file(root_path, required_files_pattern_suffixes[0])
@@ -121,7 +97,7 @@ def teardown(root_path: str):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("plugin-path", action=devops_toolset.tools.argument_validators.PathValidator)
+    parser.add_argument("plugin_path", action=devops_toolset.tools.argument_validators.PathValidator)
     args, args_unknown = parser.parse_known_args()
     kwargs = {}
     for kwarg in args_unknown:

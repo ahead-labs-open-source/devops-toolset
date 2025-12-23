@@ -26,7 +26,8 @@ def download_and_unzip_file(url: str, destination: str, delete_after_unzip: bool
             directory.
     """
 
-    file_name, file_path = devops_toolset.filesystem.paths.download_file(url, destination, constants.FileType.BINARY)
+    file_name, file_path = \
+        devops_toolset.filesystem.paths.download_file(url, destination, str(constants.FileType.BINARY))
     destination_path = pathlib.Path(destination)
     temp_extraction_path = pathlib.Path.joinpath(destination_path, constants.FileNames.TEMP_DIRECTORY)
 
@@ -46,6 +47,52 @@ def download_and_unzip_file(url: str, destination: str, delete_after_unzip: bool
 
     if delete_after_unzip:
         os.remove(file_path)
+
+
+def extract_file_from_zip(zip_file_path: str, file_path: str, destination_path: str):
+    """Extracts a file from a zip file.
+
+    Args:
+        zip_file_path: Path to the ZIP file.
+        file_path: Path to the file inside the ZIP file.
+        destination_path: Path where the file will be extracted.
+
+    Returns:
+        Tuple with file name and file path."""
+
+    with zipfile.ZipFile(zip_file_path, "r") as zip_file:
+        # Remove file path directory structure for the file inside the zip
+        file_info = zip_file.getinfo(file_path)
+        file_info.filename = os.path.basename(file_info.filename)
+
+        # Extract file
+        zip_file.extract(file_info, destination_path)
+
+
+def read_text_file_in_zip(zip_file_path: str, text_file_path: str) -> bytes:
+    """Reads a text file that is enclosed inside a ZIP file.
+
+    Args:
+        zip_file_path: Path to the ZIP file.
+        text_file_path: Path to the text file inside the ZIP file.
+
+    Returns:
+        Content of the text file
+    """
+    with zipfile.ZipFile(zip_file_path, "r") as zip_file:
+        return zip_file.read(text_file_path)
+
+
+def unzip_file(file_path: str, destination_path: str):
+    """Unzips a file to a directory.
+
+    Args:
+        file_path: File to be unzipped.
+        destination_path: Destination path to unzip the files to.
+    """
+
+    with zipfile.ZipFile(file_path, 'r') as zip_file:
+        zip_file.extractall(destination_path)
 
 
 def zip_directory(directory_path: str, file_path, internal_path_prefix: str = ""):
@@ -72,20 +119,6 @@ def zip_directory(directory_path: str, file_path, internal_path_prefix: str = ""
                     zip_file_name=os.path.basename(file_path),
                     added_file=zip_internal_path
                 ))
-
-
-def read_text_file_in_zip(zip_file_path: str, text_file_path: str) -> bytes:
-    """Reads a text file that is enclosed inside a ZIP file.
-
-    Args:
-        zip_file_path: Path to the ZIP file.
-        text_file_path: Path to the text file inside the ZIP file.
-
-    Returns:
-        Content of the text file
-    """
-    with zipfile.ZipFile(zip_file_path, "r") as zip_file:
-        return zip_file.read(text_file_path)
 
 
 if __name__ == "__main__":

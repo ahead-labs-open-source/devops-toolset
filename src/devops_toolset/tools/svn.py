@@ -17,7 +17,7 @@ platform_specific = app.load_platform_specific("environment")
 
 
 def svn_add(files_glob: str):
-    """ Performs a checkout operation for a svn repository
+    """ Performs an add operation for a svn repository
         Args:
             :param files_glob: Glob representing a group of files F.I -> trunk/*
     """

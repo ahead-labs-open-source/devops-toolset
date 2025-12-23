@@ -7,7 +7,7 @@ import devops_toolset.project_types.linux.utils as sut
 from devops_toolset.core.CommandsCore import CommandsCore
 from devops_toolset.core.LiteralsCore import LiteralsCore
 from devops_toolset.project_types.linux.commands import Commands as LinuxCommands
-from devops_toolset.project_types.linux.Literals import Literals as LinuxLiterals
+from devops_toolset.project_types.linux.literals import Literals as LinuxLiterals
 from devops_toolset.core.app import App
 
 app: App = App()

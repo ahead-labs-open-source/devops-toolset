@@ -4,7 +4,7 @@ import devops_toolset.project_types.wordpress.wp_cli as sut
 from devops_toolset.core.app import App
 from devops_toolset.core.CommandsCore import CommandsCore
 from devops_toolset.core.LiteralsCore import LiteralsCore
-from devops_toolset.project_types.wordpress.Literals import Literals as WordpressLiterals
+from devops_toolset.project_types.wordpress.literals import Literals as WordpressLiterals
 from devops_toolset.project_types.wordpress.commands import Commands as WordpressCommands
 from unittest.mock import patch, ANY
 
@@ -395,6 +395,28 @@ def test_convert_wp_parameter_raw(value, expected):
 
     # Act
     result = sut.convert_wp_parameter_raw(value)
+
+    # Assert
+    assert result == expected
+
+# endregion
+
+
+# region convert_wp_parameter_autoload
+
+
+@pytest.mark.parametrize("value, expected", [
+    (True, "--send-email"),
+    (False, "")])
+def test_convert_wp_parameter_send_email(value, expected):
+    """When True , returns a --send-email.
+    When False , returns an empty string.
+    """
+
+    # Arrange
+
+    # Act
+    result = sut.convert_wp_parameter_send_email(value)
 
     # Assert
     assert result == expected

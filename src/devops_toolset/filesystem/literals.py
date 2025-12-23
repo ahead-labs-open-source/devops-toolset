@@ -16,7 +16,7 @@ class Literals(ValueDictsBase):
         "fs_file_moving": _("Moving file {origin_file_path} to {destination_file_path}."),
         "fs_file_path": _("File path is: {path}"),
         "fs_file_path_not_valid": _("File path is not valid."),
-        "fs_file_path_does_not_exist": _("File path does not exist."),
+        "fs_file_path_does_not_exist": _("File path does not exist: {path}"),
         "fs_project_path_is": _("Project path is {path}."),
         "fs_strip_bom": _("I am stripping BOM character from file \"{path}\""),
         "fs_writing_file": _("Writing file \"{path}\""),

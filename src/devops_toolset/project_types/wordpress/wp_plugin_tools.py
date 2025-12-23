@@ -44,7 +44,7 @@ def create_plugin(plugin_config: dict, plugin_structure: dict, plugin_destinatio
     git_tools.purge_gitkeep(pathlib.Path(plugin_destination_path).as_posix())
 
     # Use structure starter to create it based to the plugin structure
-    project_starter = BasicStructureStarter()
+    project_starter = BasicStructureStarter({})
 
     # Iterate through every item recursively
     for item in plugin_structure["items"]:

@@ -18,8 +18,10 @@ import argparse
 import os
 from devops_toolset.core.literals_core import LiteralsCore
 from devops_toolset.core.app import App
-from devops_toolset.project_types.wordpress import generate_wordpress
+from devops_toolset.project_types.wordpress.scripts import generate_wordpress
 from devops_toolset.project_types.wordpress.literals import Literals as WordpressLiterals
+from devops_toolset.tools import argument_validators
+from devops_toolset.tools import cli
 from devops_toolset.tools import git
 
 app: App = App()
@@ -51,7 +53,7 @@ def main(project_path: str, db_user_password: str, db_admin_password: str, wp_ad
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("project-path", action=tools.argument_validators.PathValidator)
+    parser.add_argument("project_path", action=argument_validators.PathValidator)
     parser.add_argument("--additional-environments", default="")
     parser.add_argument("--additional-environment-db-user-passwords", default="")
     parser.add_argument("--create-db", action="store_true", default=False)
@@ -66,7 +68,7 @@ if __name__ == "__main__":
     for kwarg in args_unknown:
         splitted = str(kwarg).split("=")
         kwargs[splitted[0]] = splitted[1]
-    tools.cli.print_title(literals.get("wp_title_generate_wordpress"))
+    cli.print_title(literals.get("wp_title_generate_wordpress"))
     main(args.project_path, args.db_user_password, args.db_admin_password, args.wp_admin_password,
          args.environment,
          args.additional_environments.split(","),

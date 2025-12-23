@@ -12,7 +12,7 @@ from tests.tools.conftest import BranchesData
 from devops_toolset.core.CommandsCore import CommandsCore
 from devops_toolset.tools.commands import Commands as ToolsCommands
 from devops_toolset.core.LiteralsCore import LiteralsCore
-from devops_toolset.tools.Literals import Literals as ToolsLiterals
+from devops_toolset.tools.literals import Literals as ToolsLiterals
 
 commands = CommandsCore([ToolsCommands])
 literals = LiteralsCore([ToolsLiterals])
