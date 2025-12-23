@@ -6,7 +6,7 @@ from unittest.mock import patch, mock_open, ANY
 
 import pytest
 
-import devops_toolset.project_types.wordpress.generate_plugin as sut
+import devops_toolset.project_types.wordpress.scripts.generate_plugin as sut
 from tests.project_types.wordpress.conftest import mocked_requests_get
 
 # region main
@@ -26,20 +26,18 @@ def test_main_given_path_when_not_exist_then_raise_error(exists_mock, wordpressd
 
 @patch("devops_toolset.filesystem.paths.move_files")
 @patch("devops_toolset.tools.git.purge_gitkeep")
-@patch("devops_toolset.project_types.wordpress.generate_plugin.teardown")
+@patch("devops_toolset.project_types.wordpress.scripts.generate_plugin.teardown")
 @patch("logging.info")
-@patch("devops_toolset.core.log_tools.log_indented_list")
-@patch("devops_toolset.filesystem.paths.files_exist_filtered")
 @patch("os.path.exists")
-@patch("devops_toolset.project_types.wordpress.generate_plugin.get_and_parse_required_plugin_file")
-@patch("devops_toolset.project_types.wordpress.generate_plugin.create_plugin")
+@patch("devops_toolset.project_types.wordpress.scripts.generate_plugin.get_and_parse_required_plugin_file")
+@patch("devops_toolset.project_types.wordpress.scripts.generate_plugin.create_plugin")
+@patch("devops_toolset.project_types.wordpress.scripts.script_common.check_required_files")
 def test_main_given_required_files_when_present_then_calls_create_plugin_with_files_content(
-       create_plugin, parse_required_file_mock, path_exist_mock, files_exist_mock, log_indented_mock,
-        logging_mock, teardown_mock, purge_gitkeep_mock, move_files_mock, pluginsdata):
+       check_required_files_mock, create_plugin, parse_required_file_mock, path_exist_mock, logging_mock,
+        teardown_mock, purge_gitkeep_mock, move_files_mock, pluginsdata):
     """ Given root_path, when required files present in root_path, then calls create_plugin with files content """
     # Arrange
     path_exist_mock.return_value = True
-    files_exist_mock.return_value = []
     parse_required_file_mock.return_value = pluginsdata.plugin_config
     # Act
     sut.main(pluginsdata.plugin_root_path)
@@ -49,87 +47,23 @@ def test_main_given_required_files_when_present_then_calls_create_plugin_with_fi
 
 @patch("devops_toolset.filesystem.paths.move_files")
 @patch("devops_toolset.tools.git.purge_gitkeep")
-@patch("devops_toolset.project_types.wordpress.generate_plugin.teardown")
+@patch("devops_toolset.project_types.wordpress.scripts.generate_plugin.teardown")
 @patch("logging.info")
-@patch("devops_toolset.core.log_tools.log_indented_list")
-@patch("devops_toolset.filesystem.paths.files_exist_filtered")
 @patch("os.path.exists")
-@patch("devops_toolset.project_types.wordpress.generate_plugin.get_and_parse_required_plugin_file")
-@patch("devops_toolset.project_types.wordpress.generate_plugin.create_plugin")
+@patch("devops_toolset.project_types.wordpress.scripts.generate_plugin.get_and_parse_required_plugin_file")
+@patch("devops_toolset.project_types.wordpress.scripts.generate_plugin.create_plugin")
+@patch("devops_toolset.project_types.wordpress.scripts.script_common.check_required_files")
 def test_main_given_required_files_when_present_then_calls_teardown(
-       create_plugin, parse_required_file_mock, path_exist_mock, files_exist_mock, log_indented_mock,
-        logging_mock, teardown_mock, purge_gitkeep_mock, move_files_mock, pluginsdata):
+       check_required_files_mock, create_plugin, parse_required_file_mock, path_exist_mock, logging_mock,
+        teardown_mock, purge_gitkeep_mock, move_files_mock, pluginsdata):
     """ Given root_path, when required files present in root_path, then calls teardown """
     # Arrange
     path_exist_mock.return_value = True
-    files_exist_mock.return_value = []
     parse_required_file_mock.return_value = pluginsdata.plugin_config
     # Act
     sut.main(pluginsdata.plugin_root_path)
     # Assert
     teardown_mock.assert_called_with(pluginsdata.plugin_root_path)
-
-
-@patch("devops_toolset.filesystem.paths.move_files")
-@patch("devops_toolset.tools.git.purge_gitkeep")
-@patch("devops_toolset.project_types.wordpress.generate_plugin.teardown")
-@patch("logging.info")
-@patch("devops_toolset.core.log_tools.log_indented_list")
-@patch("devops_toolset.filesystem.paths.files_exist_filtered")
-@patch("os.path.exists")
-@patch("devops_toolset.project_types.wordpress.generate_plugin.get_and_parse_required_plugin_file")
-@patch("devops_toolset.project_types.wordpress.generate_plugin.create_plugin")
-@patch("clint.textui.prompt.yn")
-def test_main_given_required_files_when_not_present_and_use_defaults_then_download_defaults(
-       prompt_yn_mock, create_plugin, parse_required_file_mock, path_exist_mock, files_exist_mock,
-        log_indented_mock, logging_mock, teardown_mock, purge_gitkeep_mock, move_files_mock, pluginsdata, wordpressdata,
-        mocks):
-    """ Given root_path, when required files not present in root_path and using defaults,
-    then downlaods default files """
-    # Arrange
-    path_exist_mock.return_value = True
-    prompt_yn_mock.return_value = True
-    files_exist_mock.return_value = ["*plugin-config.json", "*plugin-structure.json"]
-    mocks.requests_get_mock.side_effect = mocked_requests_get
-    parse_required_file_mock.return_value = pluginsdata.plugin_config
-    m = mock_open()
-    expected_content = b"sample response in bytes"
-    # Act
-    with patch(wordpressdata.builtins_open, m, create=True):
-        sut.main(pluginsdata.plugin_root_path)
-        # Assert
-        handler = m()
-        handler.write.assert_called_with(expected_content)
-
-
-@patch("devops_toolset.filesystem.paths.move_files")
-@patch("devops_toolset.tools.git.purge_gitkeep")
-@patch("devops_toolset.project_types.wordpress.generate_plugin.teardown")
-@patch("logging.info")
-@patch("devops_toolset.core.log_tools.log_indented_list")
-@patch("devops_toolset.filesystem.paths.files_exist_filtered")
-@patch("os.path.exists")
-@patch("devops_toolset.project_types.wordpress.generate_plugin.get_and_parse_required_plugin_file")
-@patch("devops_toolset.project_types.wordpress.generate_plugin.create_plugin")
-@patch("clint.textui.prompt.yn")
-@patch("logging.critical")
-def test_main_given_required_files_when_not_present_and_not_use_defaults_then_raise_error(
-       logging_critical_mock, prompt_yn_mock, create_plugin, parse_required_file_mock, path_exist_mock,
-        files_exist_mock, log_indented_mock, logging_mock, teardown_mock, purge_gitkeep_mock, move_files_mock,
-        pluginsdata):
-    """ Given root_path, when required files not present in root_path and using defaults,
-    then downlaods default files """
-    # Arrange
-    path_exist_mock.return_value = True
-    prompt_yn_mock.return_value = False
-    files_exist_mock.return_value = ["*plugin-config.json", "*plugin-structure.json"]
-    parse_required_file_mock.return_value = pluginsdata.plugin_config
-    # Act
-    with pytest.raises(ValueError) as error:
-        sut.main(pluginsdata.plugin_root_path)
-        # Assert
-        logging_critical_mock.assert_called_with(ANY)
-        assert error is not None
 
 # endregion
 

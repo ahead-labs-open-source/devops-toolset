@@ -1,0 +1,5 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Debug webpack.js" type="NodeJSConfigurationType" application-parameters="--env environment=localhost" node-parameters="--inspect-brk" path-to-js-file="node_modules/webpack/bin/webpack.js" working-dir="$PROJECT_DIR$/content/themes/{{theme-name}}">
+    <method v="2" />
+  </configuration>
+</component>
