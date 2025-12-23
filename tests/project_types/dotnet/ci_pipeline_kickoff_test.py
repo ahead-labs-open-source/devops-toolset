@@ -1,6 +1,5 @@
 """ Unit tests for the dotnet/ci_pipeline_kickoff.py module"""
 
-
 from unittest.mock import patch
 import devops_toolset.project_types.dotnet.ci_pipeline_kickoff as sut
 from devops_toolset.core.CommandsCore import CommandsCore
@@ -13,8 +12,8 @@ app: App = App()
 literals = LiteralsCore([DotnetLiterals])
 commands = CommandsCore([DotnetCommands])
 
-
 # region main()
+
 
 @patch("devops_toolset.configure.main")
 def test_main_calls_devops_toolset_configure_main(configure_main_mock):

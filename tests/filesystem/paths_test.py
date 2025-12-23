@@ -95,7 +95,7 @@ def test_get_file_name_from_url_given_url_returns_file_name(paths):
 @pytest.mark.parametrize("rglob_response, expected", [
     (Paths.rglob_result_0, None),
     (Paths.rglob_result_1, "/pathto/file1.json"),
-    (Paths.rglob_result_many, ["/pathto/file1.json", "/pathto/file2.json"])
+    (Paths.rglob_result_many, None)
 ])
 def test_get_file_path_from_pattern_recursive(rglob_mock, rglob_response, expected, paths):
     """Given a pattern, then returns None if result has more than one results,
@@ -117,7 +117,7 @@ def test_get_file_path_from_pattern_recursive(rglob_mock, rglob_response, expect
 @pytest.mark.parametrize("glob_response, expected", [
     (Paths.rglob_result_0, None),
     (Paths.rglob_result_1, "/pathto/file1.json"),
-    (Paths.rglob_result_many, ["/pathto/file1.json", "/pathto/file2.json"])
+    (Paths.rglob_result_many, None)
 ])
 def test_get_file_path_from_pattern_no_recursive(glob_mock, glob_response, expected, paths):
     """Given a pattern, then returns None if result has more than one results,

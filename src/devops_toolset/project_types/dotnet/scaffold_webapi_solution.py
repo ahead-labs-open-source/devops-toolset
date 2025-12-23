@@ -191,7 +191,8 @@ def create_project(project_config: dict, path: str, project_layers: dict):
                             project_config["project_path"], project_config["project_name"],
                             project_config["solution_folder"])
 
-    full_project_path: str = pathlib.Path.joinpath(project_config['project_path'], project_config['project_name'])
+    project_path_obj: pathlib.Path = pathlib.Path(project_config['project_path'])
+    full_project_path: str = pathlib.Path.joinpath(project_path_obj, project_config['project_name'])
 
     # Add references to other projects
     for reference in project_config["references"]:
@@ -222,7 +223,7 @@ def create_solution(name: str, path: str):
 
 
 def dotnet_new(template: str, name: str, path: str, framework: [str, None],
-               restore: bool = False, template_options: str = "", ):
+               restore: bool = False, template_options: str = ""):
     """Creates a new .NET project using .NET CLI.
 
     Args:
@@ -275,7 +276,7 @@ def get_configuration(template_name: str):
     return f"./scaffolding_templates/{template_name}-template.json"
 
 
-def get_project_layers(template_configuration: dict, solution_name: str):
+def get_project_layers(template_configuration: dict, solution_name: str) -> dict:
     """Returns a dict with all project folders.
 
     Args:
@@ -300,6 +301,7 @@ def log(command: str, result: [str, None], ok_message: str, ko_message: str):
         ok_message: Message if everything went OK.
         ko_message: Message if things failed.
     """
+
     if result is not None:
         logging.debug(command)
         logging.info(literals.get('dotnet_cli_log').format(log=result))
@@ -316,3 +318,5 @@ if __name__ == "__main__":
     parser.add_argument("--relational-db-engine", default="mysql")
     args, args_unknown = parser.parse_known_args()
     main(args.project_path, args.name, args.template_name, args.relational_db_engine)
+
+# TODO(team) Move functions related to .NET CLI to cli.py

@@ -11,5 +11,5 @@ dist/
 # Multilanguage
 src/languages/*.mo
 
-# Thirdparties
+# Third party files
 src/vendor/

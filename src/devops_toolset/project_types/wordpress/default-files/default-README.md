@@ -1,4 +1,4 @@
-# Project Title
+# {{project-name}}
 
 One Paragraph of project description goes here
 
@@ -24,7 +24,7 @@ git clone <repository URL>
 Execute the **wordpress/bootstrap_existing_repository.py** script from the devops-toolset project using the root directory as the **project_path**. 
 
 ```
-python <devops-toolset path>/wordpress/bootstrap_existing_repository.py <root path> <other arguments>
+python <devops-toolset path>/project_types/wordpress/scripts/bootstrap_repository.py <root path> <other arguments>
 ```
 
 
@@ -34,9 +34,9 @@ python <devops-toolset path>/wordpress/bootstrap_existing_repository.py <root pa
 
 We do not have unit tests at this time.
 
-### End to end tests
+### End-to-end tests
 
-We do not have end to end tests at this time.
+We do not have end-to-end tests at this time.
 
 ## Deployment
 

@@ -16,8 +16,7 @@ commands = CommandsCore([AngularCommands])
 # region get_packagejson_project_version()
 
 
-@patch("logging.info")
-def test_get_packagejson_project_version_given_path_returns_version_number(log_info_mock, angulardata, tmp_path):
+def test_get_packagejson_project_version_given_path_returns_version_number(angulardata, tmp_path):
     """ Given the package.json file path, returns the version number."""
 
     # Arrange
@@ -25,10 +24,9 @@ def test_get_packagejson_project_version_given_path_returns_version_number(log_i
     packagejson_file_path = pathlib.Path.joinpath(tmp_path, "package.json")
     with open(str(packagejson_file_path), "w") as properties_file:
         properties_file.write(packagejson_file_content)
-    create_environment_variable = False
 
     # Act
-    result = sut.get_packagejson_project_version(str(packagejson_file_path), create_environment_variable)
+    result = sut.get_packagejson_project_version(str(packagejson_file_path))
 
     # Assert
     assert result == "1.2.3-rc.4"

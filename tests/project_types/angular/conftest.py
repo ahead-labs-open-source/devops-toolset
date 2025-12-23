@@ -14,7 +14,7 @@ import pytest
 class AngularData(object):
     """Class used to create the angulardata fixture"""
 
-    packagejson_content = "{\"name\":\"web-moovidy-com\",\"version\":\"1.2.3-rc.4\"}"
+    packagejson_content = "{\"name\":\"my-project\",\"version\":\"1.2.3-rc.4\"}"
 
 
 @pytest.fixture

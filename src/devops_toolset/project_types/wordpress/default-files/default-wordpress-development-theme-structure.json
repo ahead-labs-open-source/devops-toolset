@@ -1,8 +1,8 @@
 {
-  "$schema": "http://dev.aheadlabs.com/schemas/json/project-structure-schema.json",
+  "$schema": "https://dev.aheadlabs.com/schemas/json/project-structure-schema.json",
   "items": [
       {
-          "name": "mytheme",
+          "name": "{{mytheme}}",
           "type": "directory",
           "children": [
               {
@@ -32,24 +32,16 @@
                                           "name": "style.scss",
                                           "type": "file",
                                           "default_content": {
-                                              "source": "from_url",
-                                              "value": "https://raw.githubusercontent.com/aheadlabs/devops-toolset/master/src/devops_toolset/project_types/wordpress/default-files/default-style.scss"
+                                              "source": "from_library",
+                                              "value": "default-style.scss"
                                           }
                                       },
                                       {
                                           "name": "_variables.scss",
                                           "type": "file",
                                           "default_content": {
-                                              "source": "from_url",
-                                              "value": "https://raw.githubusercontent.com/aheadlabs/devops-toolset/master/src/devops_toolset/project_types/wordpress/default-files/default-variables.scss"
-                                          }
-                                      },
-                                      {
-                                          "name": "_fontawesome.scss",
-                                          "type": "file",
-                                          "default_content": {
-                                              "source": "from_url",
-                                              "value": "https://raw.githubusercontent.com/aheadlabs/devops-toolset/master/src/devops_toolset/project_types/wordpress/default-files/default-fontawesome.scss"
+                                              "source": "from_library",
+                                              "value": "default-variables.scss"
                                           }
                                       }
                                   ]
@@ -73,22 +65,22 @@
                                           "name": "favicon.png",
                                           "type": "bfile",
                                           "default_content": {
-                                              "source": "from_url",
-                                              "value": "https://raw.githubusercontent.com/aheadlabs/devops-toolset/master/src/devops_toolset/project_types/wordpress/default-files/default-favicon.png"
+                                              "source": "from_library",
+                                              "value": "default-favicon.png"
                                           }
                                       }
                                   ]
                               },
                               {
-                                  "name": "js",
+                                  "name": "ts",
                                   "type": "directory",
                                   "children": [
                                       {
-                                          "name": "site.js",
+                                          "name": "main.ts",
                                           "type": "file",
                                           "default_content": {
-                                              "source": "from_url",
-                                              "value": "https://raw.githubusercontent.com/aheadlabs/devops-toolset/master/src/devops_toolset/project_types/wordpress/default-files/default-site.js"
+                                              "source": "from_library",
+                                              "value": "default-main.ts"
                                           }
                                       }
                                   ]
@@ -103,8 +95,16 @@
                                   "name": "_core.php",
                                   "type": "file",
                                   "default_content": {
-                                      "source": "from_url",
-                                      "value": "https://raw.githubusercontent.com/aheadlabs/devops-toolset/master/src/devops_toolset/project_types/wordpress/default-files/default-functions-core.php"
+                                      "source": "from_library",
+                                      "value": "default-functions-core.php"
+                                  }
+                              },
+                              {
+                                  "name": "_toolset.php",
+                                  "type": "file",
+                                  "default_content": {
+                                      "source": "from_library",
+                                      "value": "default-functions-toolset.php"
                                   }
                               }
                           ]
@@ -157,48 +157,56 @@
                           "name": "404.php",
                           "type": "file",
                           "default_content": {
-                              "source": "from_url",
-                              "value": "https://raw.githubusercontent.com/aheadlabs/devops-toolset/master/src/devops_toolset/project_types/wordpress/default-files/default-404.php"
+                              "source": "from_library",
+                              "value": "default-404.php"
                           }
                       },
                       {
                           "name": "composer.json",
                           "type": "file",
                           "default_content": {
-                              "source": "from_url",
-                              "value": "https://raw.githubusercontent.com/aheadlabs/devops-toolset/master/src/devops_toolset/project_types/wordpress/default-files/default-composer.json"
+                              "source": "from_library",
+                              "value": "default-composer.json"
                           }
                       },
                       {
                           "name": "footer.php",
                           "type": "file",
                           "default_content": {
-                              "source": "from_url",
-                              "value": "https://raw.githubusercontent.com/aheadlabs/devops-toolset/master/src/devops_toolset/project_types/wordpress/default-files/default-footer.php"
+                              "source": "from_library",
+                              "value": "default-footer.php"
                           }
                       },
                       {
                           "name": "front-page.php",
                           "type": "file",
                           "default_content": {
-                              "source": "from_url",
-                              "value": "https://raw.githubusercontent.com/aheadlabs/devops-toolset/master/src/devops_toolset/project_types/wordpress/default-files/default-front-page.php"
+                              "source": "from_library",
+                              "value": "default-front-page.php"
                           }
                       },
                       {
                           "name": "functions.php",
                           "type": "file",
                           "default_content": {
-                              "source": "from_url",
-                              "value": "https://raw.githubusercontent.com/aheadlabs/devops-toolset/master/src/devops_toolset/project_types/wordpress/default-files/default-functions.php"
+                              "source": "from_library",
+                              "value": "default-functions.php"
                           }
                       },
                       {
                           "name": "header.php",
                           "type": "file",
                           "default_content": {
-                              "source": "from_url",
-                              "value": "https://raw.githubusercontent.com/aheadlabs/devops-toolset/master/src/devops_toolset/project_types/wordpress/default-files/default-header.php"
+                              "source": "from_library",
+                              "value": "default-header.php"
+                          }
+                      },
+                      {
+                          "name": "index.php",
+                          "type": "file",
+                          "default_content": {
+                              "source": "from_library",
+                              "value": "default-index.php"
                           }
                       }
                   ]
@@ -207,48 +215,64 @@
                   "name": ".gitignore",
                   "type": "file",
                   "default_content": {
-                      "source": "from_url",
-                      "value": "https://raw.githubusercontent.com/aheadlabs/devops-toolset/master/src/devops_toolset/project_types/wordpress/default-files/default-theme-development.gitignore"
+                      "source": "from_library",
+                      "value": "default-theme-development.gitignore"
                   }
               },
               {
-                  "name": "gulpfile.js",
+                  "name": "browsersync.config.js",
                   "type": "file",
                   "default_content": {
-                      "source": "from_url",
-                      "value": "https://raw.githubusercontent.com/aheadlabs/devops-toolset/master/src/devops_toolset/project_types/wordpress/default-files/default-gulpfile.js"
-                  }
-              },
-              {
-                  "name": "gulpfile.json",
-                  "type": "file",
-                  "default_content": {
-                      "source": "from_url",
-                      "value": "https://raw.githubusercontent.com/aheadlabs/devops-toolset/master/src/devops_toolset/project_types/wordpress/default-files/default-gulpfile.json"
+                      "source": "from_library",
+                      "value": "default-browsersync.config.js"
                   }
               },
               {
                   "name": "package.json",
                   "type": "file",
                   "default_content": {
-                      "source": "from_url",
-                      "value": "https://raw.githubusercontent.com/aheadlabs/devops-toolset/master/src/devops_toolset/project_types/wordpress/default-files/default-theme-development-package.json"
-                  }
-              },
-              {
-                  "name": "screenshot.png",
-                  "type": "bfile",
-                  "default_content": {
-                      "source": "from_url",
-                      "value": "https://raw.githubusercontent.com/aheadlabs/devops-toolset/master/src/devops_toolset/project_types/wordpress/default-files/default-theme-development-screenshot.png"
+                      "source": "from_library",
+                      "value": "default-theme-development-package.json"
                   }
               },
               {
                   "name": "README.md",
                   "type": "file",
                   "default_content": {
-                      "source": "from_url",
-                      "value": "https://raw.githubusercontent.com/aheadlabs/devops-toolset/master/src/devops_toolset/project_types/wordpress/default-files/default-theme-development-README.md"
+                      "source": "from_library",
+                      "value": "default-theme-development-README.md"
+                  }
+              },
+              {
+                  "name": "screenshot.png",
+                  "type": "bfile",
+                  "default_content": {
+                      "source": "from_library",
+                      "value": "default-theme-development-screenshot.png"
+                  }
+              },
+              {
+                  "name": "screenshot.psd",
+                  "type": "bfile",
+                  "default_content": {
+                      "source": "from_library",
+                      "value": "default-theme-development-screenshot.psd"
+                  }
+              },
+              {
+                  "name": "tsconfig.json",
+                  "type": "file",
+                  "default_content": {
+                      "source": "from_library",
+                      "value": "default-tsconfig.json"
+                  }
+              },
+              {
+                  "name": "webpack.config.js",
+                  "type": "file",
+                  "default_content": {
+                      "source": "from_library",
+                      "value": "default-webpack.config.js"
                   }
               }
           ]

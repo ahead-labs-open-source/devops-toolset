@@ -48,10 +48,6 @@ class Literals(ValueDictsBase):
         "dotnet_ef_utils_appsettings_environment_matched": "Environment {environment} matched on: {filename}",
         "dotnet_ef_utils_appsettings_no_environment_matched": "No environment matched on: {filename}",
         "dotnet_ef_utils_getting_appsettings_files": "Getting appsettings files from: {path}",
-        "dotnet_git_tag": "Adding tag {tag_name} to the commit {commit_name} in branch {branch_name}",
-        "dotnet_git_existing_tag_keep": "Tag {tag_name} will not be changed. Skipping tag process.",
-        "dotnet_git_existing_tag_move": "Tag {tag_name} will be moved to commit {commit_name}",
-        "dotnet_git_tag_exists": "Tag {tag_name} already exist on remote...",
         "dotnet_restore_before": "Launching dotnet restore inside {path}. Please wait...",
         "dotnet_project_version": "The project version is {version}",
     }
