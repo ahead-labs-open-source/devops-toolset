@@ -14,6 +14,12 @@ Constraints:
   - [ ] Update badges for `main` and/or `feature/*` as appropriate.
   - [ ] Verify workflows exist and publish the expected artifacts (e.g., coverage reports).
 
+- [ ] Document the standard shields.io badges to add per project (agent-assisted).
+  - [ ] Define a canonical badge set (e.g., last commit, build, release, coverage, quality gate, license, PyPI) and when each one applies.
+  - [ ] Document required inputs (org/repo, default branch, CI provider, Sonar project key, package name).
+  - [ ] Provide an agent playbook/prompt template to generate/update badges consistently across repositories.
+  - [ ] Include validation steps (badges render on GitHub, links go to the correct target page, no `master` assumptions).
+
 ## Packaging / Poetry / Project layout
 
 - [ ] Review whether the `src/devops_toolset` layout is consistent with Poetry and Python packaging best practices.
@@ -38,6 +44,25 @@ Constraints:
   - [ ] Verify license/attribution/compatibility before copying any code (keep compliance).
   - [ ] Integrate into CI if applicable (e.g., a job to list issues and fail on a threshold).
   - [ ] Add usage documentation (args, examples) and local run instructions.
+
+- [ ] Run an initial SonarCloud analysis on the default branch `main` (it used to be `master`).
+  - [ ] Verify SonarCloud project settings reference `main` as the main branch.
+  - [ ] Update any pipeline/workflow configuration that still assumes `master`.
+  - [ ] Ensure README links/badges (coverage/quality gate) reflect the `main` branch.
+
+## CI/CD (Azure Pipelines -> GitHub Actions)
+
+- [ ] Migrate CI/CD from Azure DevOps Pipelines to GitHub Actions.
+  - [ ] Inventory current Azure Pipelines definitions/templates (e.g., under `src/devops_toolset/.devops/`) and document what each job does.
+  - [ ] Decide the target workflows to create (minimum viable):
+    - [ ] Unit tests (pytest) on PRs and pushes.
+    - [ ] Lint/static checks if applicable.
+    - [ ] SonarCloud analysis (if still required for this repo).
+    - [ ] Build/package verification (sdist/wheel) and optional publish.
+  - [ ] Create `.github/workflows/*` equivalents and verify they run on PRs.
+  - [ ] Port secrets/variables from Azure DevOps to GitHub Actions secrets (no secrets in repo).
+  - [ ] Update README badges to reflect the new GitHub Actions workflows.
+  - [ ] Deprecate/remove Azure Pipelines config only after parity is confirmed.
 
 ## Maintenance
 
