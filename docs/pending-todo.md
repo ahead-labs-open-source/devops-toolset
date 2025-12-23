@@ -14,6 +14,12 @@ Constraints:
   - [ ] Update badges for `main` and/or `feature/*` as appropriate.
   - [ ] Verify workflows exist and publish the expected artifacts (e.g., coverage reports).
 
+- [ ] Document the standard shields.io badges to add per project (agent-assisted).
+  - [ ] Define a canonical badge set (e.g., last commit, build, release, coverage, quality gate, license, PyPI) and when each one applies.
+  - [ ] Document required inputs (org/repo, default branch, CI provider, Sonar project key, package name).
+  - [ ] Provide an agent playbook/prompt template to generate/update badges consistently across repositories.
+  - [ ] Include validation steps (badges render on GitHub, links go to the correct target page, no `master` assumptions).
+
 ## Packaging / Poetry / Project layout
 
 - [ ] Review whether the `src/devops_toolset` layout is consistent with Poetry and Python packaging best practices.
