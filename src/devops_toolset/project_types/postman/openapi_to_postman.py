@@ -17,18 +17,19 @@ import urllib.request
 class OpenAPIToPostmanConverter:
     """Converts OpenAPI specifications to Postman collections and environment files."""
 
-    def __init__(self, openapi_source: str, output_folder: str, environments: List[str]):
+    def __init__(self, openapi_source: str, output_folder: str, environments: Optional[List[str]] = None):
         """
         Initialize the converter.
 
         Args:
             openapi_source: Path to OpenAPI file or URL
             output_folder: Directory where generated files will be saved
-            environments: List of environment names (e.g., ["staging", "production"])
+            environments: Optional list of environment names. If not provided, will be read from x-postman-environments in OpenAPI spec
         """
         self.openapi_source = openapi_source
         self.output_folder = Path(output_folder)
-        self.environments = environments
+        self.environments = environments  # Will be set from OpenAPI if None
+        self.global_vars: Dict[str, str] = {}  # Global variables from _global section
         self.openapi_spec: Dict[str, Any] = {}
         self.api_version: str = "1.0.0"
         self.api_title: str = "API"
@@ -78,10 +79,94 @@ class OpenAPIToPostmanConverter:
             self.api_version = info.get('version', '1.0.0')
             self.api_title = info.get('title', 'API')
             
-            print(f"Loaded OpenAPI spec: {self.api_title} v{self.api_version}")
+            # Determine version display with prefix (avoiding double 'v')
+            version_prefix = '' if self.api_version.startswith('v') else 'v'
+            version_display = f"{version_prefix}{self.api_version}"
+            
+            # If environments not provided, read from x-postman-environments
+            if self.environments is None:
+                # Validate x-postman-environments exists
+                if 'x-postman-environments' not in self.openapi_spec:
+                    raise Exception(
+                        "❌ Missing 'x-postman-environments' section in OpenAPI specification.\n"
+                        "Please add the x-postman-environments section with at least one environment configuration.\n"
+                        "Example:\n"
+                        "x-postman-environments:\n"
+                        "  _global:  # Optional: shared variables\n"
+                        "    tenantId: \"your-tenant-id\"\n"
+                        "  staging:\n"
+                        "    clientId: \"your-client-id\"\n"
+                        "    clientSecret: \"<replace-with-your-secret>\"\n"
+                        "    scope: \"api://your-client-id/.default\""
+                    )
+                
+                x_postman_envs = self.openapi_spec.get('x-postman-environments', {})
+                
+                # Extract _global variables (if present) and filter from environments
+                self.global_vars = x_postman_envs.get('_global', {})
+                env_list = [k for k in x_postman_envs.keys() if k != '_global']
+                
+                # Validate at least one environment exists (excluding _global)
+                if not env_list or len(env_list) == 0:
+                    raise Exception(
+                        "❌ The 'x-postman-environments' section has no environments defined.\n"
+                        "At least one environment (other than _global) must be defined."
+                    )
+                
+                self.environments = env_list
+                print(f"Loaded OpenAPI spec: {self.api_title} {version_display}")
+                if self.global_vars:
+                    print(f"Detected global variables: {', '.join(self.global_vars.keys())}")
+                print(f"Detected environments from x-postman-environments: {', '.join(self.environments)}")
+                
+                # Validate environment consistency (excluding _global)
+                envs_without_global = {k: v for k, v in x_postman_envs.items() if k != '_global'}
+                self._validate_environment_consistency(envs_without_global)
+            else:
+                print(f"Loaded OpenAPI spec: {self.api_title} {version_display}")
+                print(f"Using provided environments: {', '.join(self.environments)}")
             
         except Exception as e:
             raise Exception(f"Error loading OpenAPI specification: {str(e)}")
+
+    def _validate_environment_consistency(self, x_postman_envs: Dict[str, Dict[str, str]]) -> None:
+        """
+        Validate that all environments have the same set of keys.
+        Note: _global section should be filtered out before calling this method.
+        
+        Args:
+            x_postman_envs: Dictionary of environment configurations (excluding _global)
+            
+        Raises:
+            Exception: If environments have inconsistent keys
+        """
+        if not x_postman_envs or len(x_postman_envs) < 2:
+            return  # Nothing to validate if 0 or 1 environment
+        
+        env_names = list(x_postman_envs.keys())
+        
+        # Get all unique keys across all environments
+        all_keys = set()
+        env_keys = {}
+        for env_name, env_config in x_postman_envs.items():
+            keys = set(env_config.keys())
+            env_keys[env_name] = keys
+            all_keys.update(keys)
+        
+        # Check if all environments have the same keys
+        inconsistencies = []
+        for env_name, keys in env_keys.items():
+            missing_keys = all_keys - keys
+            if missing_keys:
+                inconsistencies.append(f"  - Environment '{env_name}' is missing keys: {', '.join(sorted(missing_keys))}")
+        
+        if inconsistencies:
+            error_msg = "❌ Environment validation failed: Inconsistent keys in x-postman-environments\n"
+            error_msg += "\n".join(inconsistencies)
+            error_msg += f"\n\nAll environments must have the same keys. Expected keys: {', '.join(sorted(all_keys))}"
+            raise Exception(error_msg)
+        
+        print(f"✅ Environment validation passed: All environments have consistent keys ({', '.join(sorted(all_keys))})")
 
     def _get_base_url(self) -> str:
         """
@@ -189,13 +274,12 @@ class OpenAPIToPostmanConverter:
         parameters = operation.get('parameters', [])
         param_dict = self._convert_parameters(parameters)
         
-        # Build URL object
-        url_parts = base_url.split('/')
+        # Build URL object using {{baseUrl}} variable
         path_parts = [p for p in postman_path.split('/') if p]
         
         url_obj = {
-            'raw': f"{base_url}{postman_path}",
-            'host': url_parts[:3] if len(url_parts) >= 3 else ['{{baseUrl}}'],
+            'raw': f"{{{{baseUrl}}}}{postman_path}",
+            'host': ['{{baseUrl}}'],
             'path': path_parts,
             'query': param_dict['query']
         }
@@ -268,7 +352,25 @@ class OpenAPIToPostmanConverter:
                 },
                 'description': 'Get JWT token from Azure AD for API authentication'
             },
-            'response': []
+            'response': [],
+            'event': [
+                {
+                    'listen': 'test',
+                    'script': {
+                        'exec': [
+                            '// Automatically capture the access token from the response',
+                            'if (pm.response.code === 200) {',
+                            '    const jsonData = pm.response.json();',
+                            '    if (jsonData.access_token) {',
+                            '        pm.environment.set("accessToken", jsonData.access_token);',
+                            '        console.log("✅ Access token captured and stored in environment");',
+                            '    }',
+                            '}'
+                        ],
+                        'type': 'text/javascript'
+                    }
+                }
+            ]
         }
 
     def generate_collection(self) -> str:
@@ -291,41 +393,18 @@ class OpenAPIToPostmanConverter:
             'description': 'Authentication endpoints'
         }
         
-        # Create collection structure
+        # Determine collection name with version (avoiding double 'v' prefix)
+        version_prefix = '' if self.api_version.startswith('v') else 'v'
+        collection_name = f"{self.api_title} {version_prefix}{self.api_version}"
+        
+        # Create collection structure (all variables are in environment files)
         collection = {
             'info': {
-                'name': f"{self.api_title} v{self.api_version}",
+                'name': collection_name,
                 'description': self.openapi_spec.get('info', {}).get('description', ''),
                 'schema': 'https://schema.getpostman.com/json/collection/v2.1.0/collection.json'
             },
-            'item': [auth_folder],
-            'variable': [
-                {
-                    'key': 'baseUrl',
-                    'value': base_url,
-                    'type': 'string'
-                },
-                {
-                    'key': 'tenantId',
-                    'value': '',
-                    'type': 'string'
-                },
-                {
-                    'key': 'clientId',
-                    'value': '',
-                    'type': 'string'
-                },
-                {
-                    'key': 'clientSecret',
-                    'value': '',
-                    'type': 'string'
-                },
-                {
-                    'key': 'scope',
-                    'value': '',
-                    'type': 'string'
-                }
-            ]
+            'item': [auth_folder]
         }
         
         # Group endpoints by tags or create flat structure
@@ -351,9 +430,9 @@ class OpenAPIToPostmanConverter:
                 'item': requests
             })
         
-        # Generate filename with version and timestamp
+        # Generate filename with version and timestamp (reusing collection_name for consistency)
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        filename = f"{self.api_title.replace(' ', '_')}_v{self.api_version}_{timestamp}_collection.json"
+        filename = f"{collection_name.replace(' ', '_')}_{timestamp}_collection.json"
         file_path = self.output_folder / filename
         
         # Write collection file
@@ -377,14 +456,45 @@ class OpenAPIToPostmanConverter:
         generated_files = []
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         
+        # Determine name prefix with version (avoiding double 'v' prefix)
+        version_prefix = '' if self.api_version.startswith('v') else 'v'
+        name_base = f"{self.api_title} {version_prefix}{self.api_version}"
+        filename_base = name_base.replace(' ', '_')
+        
+        # Get x-postman-environments from OpenAPI spec (if exists)
+        x_postman_envs = self.openapi_spec.get('x-postman-environments', {})
+        
         for env_name in self.environments:
+            # Get environment-specific values from x-postman-environments
+            env_config = x_postman_envs.get(env_name, {})
+            
+            # Merge global variables with environment-specific ones (env-specific overrides global)
+            merged_config = {**self.global_vars, **env_config}
+            
+            # Determine baseUrl based on environment
+            env_base_url = base_url
+            if env_name == 'staging':
+                # Use staging server from OpenAPI servers array
+                servers = self.openapi_spec.get('servers', [])
+                for server in servers:
+                    if 'stg' in server.get('url', '').lower() or 'staging' in server.get('description', '').lower():
+                        env_base_url = server.get('url', base_url)
+                        break
+            elif env_name == 'production':
+                # Use production server (usually the first without staging markers)
+                servers = self.openapi_spec.get('servers', [])
+                for server in servers:
+                    if 'stg' not in server.get('url', '').lower() and 'staging' not in server.get('description', '').lower():
+                        env_base_url = server.get('url', base_url)
+                        break
+            
             environment = {
                 'id': f"{env_name}-{timestamp}",
-                'name': f"{self.api_title} - {env_name.capitalize()}",
+                'name': f"{name_base} - {env_name.capitalize()}",
                 'values': [
                     {
                         'key': 'baseUrl',
-                        'value': base_url.replace('{{baseUrl}}', f'https://api-{env_name}.example.com'),
+                        'value': env_base_url,
                         'type': 'default',
                         'enabled': True
                     },
@@ -396,25 +506,25 @@ class OpenAPIToPostmanConverter:
                     },
                     {
                         'key': 'tenantId',
-                        'value': '',
+                        'value': merged_config.get('tenantId', ''),
                         'type': 'secret',
                         'enabled': True
                     },
                     {
                         'key': 'clientId',
-                        'value': '',
+                        'value': merged_config.get('clientId', ''),
                         'type': 'secret',
                         'enabled': True
                     },
                     {
                         'key': 'clientSecret',
-                        'value': '',
+                        'value': merged_config.get('clientSecret', '<replace-with-your-secret>'),
                         'type': 'secret',
                         'enabled': True
                     },
                     {
                         'key': 'scope',
-                        'value': 'api://.default',
+                        'value': merged_config.get('scope', 'api://.default'),
                         'type': 'default',
                         'enabled': True
                     },
@@ -428,8 +538,8 @@ class OpenAPIToPostmanConverter:
                 '_postman_variable_scope': 'environment'
             }
             
-            # Generate filename with version and timestamp
-            filename = f"{self.api_title.replace(' ', '_')}_v{self.api_version}_{timestamp}_{env_name}_environment.json"
+            # Generate filename using consistent naming (reusing filename_base for consistency)
+            filename = f"{filename_base}_{timestamp}_{env_name}_environment.json"
             file_path = self.output_folder / filename
             
             # Write environment file
