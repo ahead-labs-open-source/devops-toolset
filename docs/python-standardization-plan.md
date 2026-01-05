@@ -1,7 +1,6 @@
 # Python Standardization Plan: Poetry Migration and PyPI Publishing
 
 **Date:** January 4, 2026  
-**Branch:** develop  
 **Status:** Planning
 
 ## Executive Summary
