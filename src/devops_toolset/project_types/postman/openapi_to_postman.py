@@ -587,36 +587,90 @@ class OpenAPIToPostmanConverter:
         return result
 
 
-def main():
+def main(openapi_source: str, output_folder: str, environments: Optional[List[str]] = None):
     """
     Main function for command-line usage.
-    Example usage demonstrating the converter with the Petstore API.
+    
+    Args:
+        openapi_source: Path to OpenAPI file or URL
+        output_folder: Directory where generated files will be saved
+        environments: Optional list of environment names. If not provided, reads from x-postman-environments
+    
+    Returns:
+        Exit code (0 for success, 1 for error)
     """
-    # Example configuration
-    openapi_url = "https://petstore3.swagger.io/api/v3/openapi.json"
-    output_folder = "./postman_output"
-    environments = ["staging", "production"]
-    
-    # Create converter instance
-    converter = OpenAPIToPostmanConverter(
-        openapi_source=openapi_url,
-        output_folder=output_folder,
-        environments=environments
-    )
-    
-    # Execute conversion
     try:
+        converter = OpenAPIToPostmanConverter(
+            openapi_source=openapi_source,
+            output_folder=output_folder,
+            environments=environments
+        )
+        
         result = converter.convert()
-        print("\nGenerated files:")
-        print(f"  Collection: {result['collection']}")
+        
+        print()
+        print("=" * 70)
+        print("✅ GENERATION SUCCESSFUL")
+        print("=" * 70)
+        print(f"API: {result['api_title']} v{result['api_version']}")
+        print(f"Collection: {result['collection']}")
+        print(f"Environments ({len(result['environments'])} files):")
         for env_file in result['environments']:
-            print(f"  Environment: {env_file}")
+            print(f"  - {env_file}")
+        print("=" * 70)
+        
+        return 0
+        
     except Exception as e:
+        print()
+        print("=" * 70)
+        print("❌ ERROR")
+        print("=" * 70)
         print(f"Error: {str(e)}")
+        print("=" * 70)
         return 1
-    
-    return 0
 
 
 if __name__ == "__main__":
-    exit(main())
+    import argparse
+    
+    parser = argparse.ArgumentParser(
+        description="Convert OpenAPI 3.0 specifications to Postman Collection v2.1 format",
+        epilog="""
+Examples:
+  python openapi_to_postman.py openapi.yaml ./output
+  python openapi_to_postman.py openapi.yaml ./output --environments staging production
+  python openapi_to_postman.py https://petstore3.swagger.io/api/v3/openapi.json ./output
+
+OpenAPI x-postman-environments structure:
+  x-postman-environments:
+    _global:                    # Optional: Variables shared across all environments
+      tenantId: "your-tenant-id"
+    staging:
+      clientId: "staging-client-id"
+      scope: "api://staging-client-id/.default"
+    production:
+      clientId: "production-client-id"
+      scope: "api://production-client-id/.default"
+        """,
+        formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    
+    parser.add_argument(
+        "openapi_source",
+        help="Path to OpenAPI specification file or URL"
+    )
+    parser.add_argument(
+        "output_folder",
+        help="Directory where generated files will be saved"
+    )
+    parser.add_argument(
+        "--environments",
+        nargs='+',
+        default=None,
+        help="Optional environment names (e.g., staging production). If not provided, reads from x-postman-environments in OpenAPI spec"
+    )
+    
+    args = parser.parse_args()
+    
+    exit(main(args.openapi_source, args.output_folder, args.environments))
