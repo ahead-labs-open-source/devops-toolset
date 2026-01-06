@@ -12,6 +12,8 @@ from collections.abc import Mapping, Sequence
 from typing import Any, Optional, cast
 from pathlib import Path
 import urllib.request
+import re
+from urllib.parse import urlparse, urlunparse
 
 try:
     # Normal package import
@@ -227,6 +229,51 @@ class OpenAPIToPostmanConverter:
             return servers[0].get('url', '{{baseUrl}}')
         return '{{baseUrl}}'
 
+    def _get_version_path_segment(self) -> Optional[str]:
+        """Derive a version path segment from info.version.
+
+        Examples:
+          - v1-rev0 -> v1
+          - v2 -> v2
+          - 1.0.0 -> v1
+
+        Returns:
+            A string like 'v1' or None if it cannot be derived.
+        """
+        version = str(self.api_version or '').strip()
+        if not version:
+            return None
+
+        m = re.match(r'^(v\d+)', version, flags=re.IGNORECASE)
+        if m:
+            # Keep the canonical 'v' prefix
+            return f"v{m.group(1)[1:]}"  # normalize casing
+
+        m = re.match(r'^(\d+)', version)
+        if m:
+            return f"v{m.group(1)}"
+
+        return None
+
+    def _append_version_to_server_url(self, server_url: str) -> str:
+        """Append /vN to a server URL based on info.version, if not already present."""
+        version_seg = self._get_version_path_segment()
+        if not version_seg:
+            return server_url
+
+        # Skip templated values like {{baseUrl}}
+        if server_url.strip().startswith('{{'):
+            return server_url
+
+        parsed = urlparse(server_url)
+        path = (parsed.path or '').rstrip('/')
+        if path.lower().endswith('/' + version_seg.lower()):
+            new_path = path
+        else:
+            new_path = (path + '/' + version_seg) if path else ('/' + version_seg)
+
+        return urlunparse(parsed._replace(path=new_path))
+
     def _convert_parameters(self, parameters: Sequence[Mapping[str, Any]]) -> dict[str, list[dict[str, Any]]]:
         """
         Convert OpenAPI parameters to Postman format.
@@ -321,6 +368,65 @@ class OpenAPIToPostmanConverter:
         
         return None
 
+    @staticmethod
+    def _to_lower_camel_from_header_name(header_name: str) -> str:
+        parts = [p for p in re.split(r'[^A-Za-z0-9]+', header_name) if p]
+        if not parts:
+            return ''
+        first = parts[0].lower()
+        rest = ''.join(p[:1].upper() + p[1:] for p in parts[1:])
+        return first + rest
+
+    def _security_headers_for_operation(self, operation: dict[str, Any]) -> list[dict[str, Any]]:
+        """Build Postman headers implied by OpenAPI security requirements."""
+        security_reqs_raw: Any = operation.get('security')
+        if security_reqs_raw is None:
+            security_reqs_raw = self.openapi_spec.get('security', []) if self.openapi_spec else []
+
+        security_reqs: list[dict[str, Any]] = []
+        if isinstance(security_reqs_raw, list):
+            security_reqs = [r for r in security_reqs_raw if isinstance(r, dict)]
+
+        schemes_raw: Any = (self.openapi_spec or {}).get('components', {}).get('securitySchemes', {})
+        schemes: dict[str, Any] = schemes_raw if isinstance(schemes_raw, dict) else {}
+
+        used_scheme_names: set[str] = set()
+        for req in security_reqs:
+            used_scheme_names.update(str(k) for k in req.keys())
+
+        headers: list[dict[str, Any]] = []
+        for scheme_name in sorted(used_scheme_names):
+            scheme_raw = schemes.get(scheme_name, {})
+            scheme: dict[str, Any] = scheme_raw if isinstance(scheme_raw, dict) else {}
+            scheme_type = str(scheme.get('type', '')).lower()
+
+            if scheme_type == 'apikey' and str(scheme.get('in', '')).lower() == 'header':
+                header_name = str(scheme.get('name', '')).strip()
+                if not header_name:
+                    continue
+                var_key = self._to_lower_camel_from_header_name(header_name)
+                if not var_key:
+                    continue
+                headers.append(
+                    {
+                        'key': header_name,
+                        'value': f"{{{{{var_key}}}}}",
+                        'description': str(scheme.get('description', '')),
+                        'disabled': False,
+                    }
+                )
+            elif scheme_type == 'oauth2':
+                headers.append(
+                    {
+                        'key': 'Authorization',
+                        'value': 'Bearer {{accessToken}}',
+                        'description': 'OAuth2 access token',
+                        'disabled': False,
+                    }
+                )
+
+        return headers
+
     def _create_postman_request(
         self,
         path: str,
@@ -344,10 +450,19 @@ class OpenAPIToPostmanConverter:
         postman_path = convert_path_to_postman(path)
         param_dict = self._convert_parameters(parameters)
 
-        # Build URL object. Keep it minimal so {{baseUrl}} can include protocol and path.
+        # Build URL object.
+        # Postman accepts either a raw string or a structured object. Some Postman clients
+        # display the URL bar more reliably when host/path are also provided.
+        raw_url = f"{{{{baseUrl}}}}{postman_path}"
+        path_segments = [seg for seg in postman_path.lstrip('/').split('/') if seg]
+
         url_obj: dict[str, Any] = {
-            'raw': f"{{{{baseUrl}}}}{postman_path}",
-            'query': param_dict['query']
+            'raw': raw_url,
+            # Keep baseUrl as a single host token so environments can override it.
+            # baseUrl may include protocol and base path; raw remains the source of truth.
+            'host': ['{{baseUrl}}'],
+            'path': path_segments,
+            'query': param_dict['query'],
         }
         
         # Build request object
@@ -360,6 +475,14 @@ class OpenAPIToPostmanConverter:
                 'description': operation.get('description', '')
             }
         }
+
+        # Add security-derived headers (e.g., APIM subscription key, OAuth2 token)
+        existing_header_keys = {str(h.get('key', '')).lower() for h in request['request'].get('header', []) if isinstance(h, dict)}
+        for hdr in self._security_headers_for_operation(operation):
+            key_lower = str(hdr.get('key', '')).lower()
+            if key_lower and key_lower not in existing_header_keys:
+                request['request']['header'].append(hdr)
+                existing_header_keys.add(key_lower)
         
         # Add request body if present
         request_body = self._convert_request_body(operation.get('requestBody'))
@@ -583,6 +706,9 @@ class OpenAPIToPostmanConverter:
                     if 'stg' not in server.get('url', '').lower() and 'staging' not in server.get('description', '').lower():
                         env_base_url = server.get('url', base_url)
                         break
+
+            # Build baseUrl as <server-url>/<vN> where vN comes from info.version
+            env_base_url = self._append_version_to_server_url(str(env_base_url))
             
             environment: dict[str, Any] = {
                 'id': f"{env_name}-{timestamp}",
@@ -633,6 +759,22 @@ class OpenAPIToPostmanConverter:
                 ],
                 '_postman_variable_scope': 'environment'
             }
+
+            # Append any additional variables provided via x-postman-environments
+            existing_keys = {v.get('key') for v in environment['values'] if isinstance(v, dict)}
+            for key in sorted(merged_config.keys()):
+                if key in existing_keys:
+                    continue
+                value = merged_config.get(key, '')
+                inferred_type = 'secret' if re.search(r'(secret|token|key|password)', key, flags=re.IGNORECASE) else 'default'
+                environment['values'].append(
+                    {
+                        'key': key,
+                        'value': value,
+                        'type': inferred_type,
+                        'enabled': True
+                    }
+                )
             
             # Generate filename using consistent naming (reusing filename_base for consistency)
             filename = f"{filename_base}_{timestamp}_{env_name}_environment.json"

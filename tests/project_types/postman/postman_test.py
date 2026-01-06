@@ -340,6 +340,90 @@ class TestOpenAPIToPostmanConverter:
             assert 'clientId' in var_keys
             assert 'clientSecret' in var_keys
 
+    def test_generate_environment_files_includes_extra_x_postman_variables(self, temp_output_dir, sample_openapi_spec):
+        """Extra variables in x-postman-environments should be included in environment output."""
+        spec = dict(sample_openapi_spec)
+        spec['x-postman-environments'] = {
+            '_global': {
+                'tenantId': 'tenant-1'
+            },
+            'staging': {
+                'ocpApimSubscriptionKey': 'sub-key-1',
+                'clientId': 'client-1',
+                'clientSecret': 'secret-1',
+                'scope': 'api://client-1/.default'
+            }
+        }
+
+        spec_file = temp_output_dir / "test_spec_with_postman_envs.json"
+        with open(spec_file, 'w') as f:
+            json.dump(spec, f)
+
+        converter = OpenAPIToPostmanConverter(
+            openapi_source=str(spec_file),
+            output_folder=str(temp_output_dir),
+            environments=["staging"]
+        )
+
+        converter.load_openapi_spec()
+        env_files = converter.generate_environment_files()
+        assert len(env_files) == 1
+
+        with open(env_files[0], 'r') as f:
+            env = json.load(f)
+
+        values = {v['key']: v for v in env.get('values', [])}
+        assert 'ocpApimSubscriptionKey' in values
+        assert values['ocpApimSubscriptionKey']['value'] == 'sub-key-1'
+
+    def test_security_schemes_generate_headers(self, temp_output_dir, sample_openapi_spec):
+        """apiKey/oAuth2 security schemes should translate to Postman headers."""
+        spec = dict(sample_openapi_spec)
+        spec['components'] = {
+            'securitySchemes': {
+                'subscriptionKey': {
+                    'type': 'apiKey',
+                    'in': 'header',
+                    'name': 'Ocp-Apim-Subscription-Key',
+                },
+                'oauth2': {
+                    'type': 'oauth2',
+                    'flows': {
+                        'clientCredentials': {
+                            'tokenUrl': 'https://login.example.com/token',
+                            'scopes': {}
+                        }
+                    }
+                }
+            }
+        }
+        spec['security'] = [{'subscriptionKey': [], 'oauth2': []}]
+
+        spec_file = temp_output_dir / "test_spec_with_security.json"
+        with open(spec_file, 'w') as f:
+            json.dump(spec, f)
+
+        converter = OpenAPIToPostmanConverter(
+            openapi_source=str(spec_file),
+            output_folder=str(temp_output_dir),
+            environments=["test"]
+        )
+        converter.load_openapi_spec()
+
+        collection_path = converter.generate_collection()
+        with open(collection_path, 'r') as f:
+            collection = json.load(f)
+
+        users_folder = next((it for it in collection.get('item', []) if it.get('name') == 'Users'), None)
+        assert users_folder is not None
+        any_request = next((r for r in users_folder.get('item', []) if isinstance(r, dict) and 'request' in r), None)
+        assert any_request is not None
+
+        headers = any_request['request'].get('header', [])
+        header_map = {h.get('key'): h.get('value') for h in headers}
+        assert header_map.get('Ocp-Apim-Subscription-Key') == '{{ocpApimSubscriptionKey}}'
+        assert header_map.get('Authorization') == 'Bearer {{accessToken}}'
+
 
 class TestUtils:
     """Test cases for utility functions."""
