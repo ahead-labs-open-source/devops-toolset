@@ -1,8 +1,9 @@
 """ This script allows the user to configure some initial settings """
 import argparse
 import json
-import pkg_resources
 import logging
+
+from devops_toolset.core.settings import Settings
 
 logging.basicConfig(level=logging.INFO)
 logging.Formatter("%(asctime)s %(levelname)-8s %(module)-15s %(message)s")
@@ -11,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 def main(devops_platform: str, language: str):
     """ Sets the configuration inside settings.json """
-    settings_path = pkg_resources.resource_filename("devops_toolset.core", "settings.json")
+    settings_path = Settings.settings_path.as_posix()
 
     with open(settings_path, 'r') as settings_file:
         settings = json.load(settings_file)
