@@ -1,4 +1,5 @@
 # DevOps Toolset
+
 [![GitHub last commit](https://img.shields.io/github/last-commit/ahead-labs-open-source/devops-toolset)](https://github.com/ahead-labs-open-source/devops-toolset/commits/)
 [![GitHub tag](https://img.shields.io/github/v/tag/ahead-labs-open-source/devops-toolset)](https://github.com/ahead-labs-open-source/devops-toolset/tags)
 
@@ -13,10 +14,11 @@
 [![Sonar violations (branch)](https://img.shields.io/sonar/violations/ahead-labs-open-source_devops-toolset/main?server=https%3A%2F%2Fsonarcloud.io)](https://sonarcloud.io/dashboard?id=ahead-labs-open-source_devops-toolset&branch=main)
 [![Sonar coverage (branch)](https://img.shields.io/sonar/coverage/ahead-labs-open-source_devops-toolset/main?server=https%3A%2F%2Fsonarcloud.io)](https://sonarcloud.io/dashboard?id=ahead-labs-open-source_devops-toolset&branch=main)
 
-Everything than can be automated, must be automated!<br><br>
+Everything than can be automated, must be automated!
+
 ![Logo](.media/devops-toolset-logo-216x100px.png)
 
-# Getting Started
+## Getting Started
 
 ## Description
 
@@ -37,18 +39,20 @@ This project contains general purpose, DevOps-related, scripts and tools.
 
 ### Unit tests
 
-To run the unit tests you need to install [pytest from PyPI](https://pypi.org/project/pytest/). You can do so by executing the following command:
+Install dev/test dependencies:
 
-```
-pip install pytest
-```
-
-Then, run the tests using the following command at the project's root path:
-```
-pytest
+```bash
+python -m pip install -r requirements-dev.txt
 ```
 
-# File structure
+Then run the tests from the repository root:
+
+```bash
+python -m pytest
+```
+
+## File structure
+
 | Directory / file | Description |
 | -- | -- |
 | /.devops | Contains pipeline definitions for the project |
@@ -62,5 +66,6 @@ pytest
 | /toolset | Script that downloads "manually" this toolset to a directory (deprecated) |
 | /project.xml | Project description and project version |
 
-# WordPress tools
+## WordPress tools
+
 This repository relies on WP CLI for WordPress automation. Please refer to [WP-CLI handbook](https://make.wordpress.org/cli/handbook/) for more information and installation instructions.
