@@ -291,6 +291,20 @@ class TestOpenAPIToPostmanConverter:
         assert 'item' in collection
         assert len(collection['item']) > 0  # Should have at least auth folder
 
+        # Verify a templated path is converted to Postman format (:var)
+        users_folder = next((f for f in collection['item'] if f.get('name') == 'Users'), None)
+        assert users_folder is not None
+        requests = users_folder.get('item', [])
+        get_user = next((r for r in requests if r.get('name') == 'Get user by ID'), None)
+        assert get_user is not None
+        assert get_user['request']['url']['raw'].endswith('/users/:userId')
+
+        # Verify query parameters are preserved
+        list_users = next((r for r in requests if r.get('name') == 'List users'), None)
+        assert list_users is not None
+        query_keys = [q.get('key') for q in list_users['request']['url'].get('query', [])]
+        assert 'limit' in query_keys
+
     def test_generate_environment_files(self, temp_output_dir, sample_openapi_spec):
         """Test environment file generation."""
         spec_file = temp_output_dir / "test_spec.json"
