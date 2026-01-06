@@ -327,8 +327,14 @@ def test_download_wordpress_theme_given_theme_config_when_source_type_is_feed_th
                                          azdevops_user=azdevops_user,
                                          azdevops_token=azdevops_token)
             # Assert
-            get_last_artifact_mock.called_once_with("organization", feed_config["name"], feed_config["package"],
-                                                    destination_path, azdevops_user, azdevops_token)
+            get_last_artifact_mock.assert_called_once_with(
+                "organization",
+                feed_config["name"],
+                feed_config["package"],
+                destination_path,
+                azdevops_user,
+                azdevops_token,
+            )
 
 
 @patch("logging.warning")
