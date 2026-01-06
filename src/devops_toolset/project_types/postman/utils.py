@@ -1,7 +1,7 @@
 """Utility functions for the Postman project type module."""
 
 import re
-from typing import Dict, Any, List, Optional
+from typing import Any, Optional
 from urllib.parse import urlparse
 
 
@@ -44,7 +44,7 @@ def is_url(path: str) -> bool:
         return False
 
 
-def extract_path_variables(path: str) -> List[str]:
+def extract_path_variables(path: str) -> list[str]:
     """
     Extract path variables from an OpenAPI path template.
     
@@ -70,7 +70,7 @@ def convert_path_to_postman(path: str) -> str:
     return re.sub(r'\{([^}]+)\}', r':\1', path)
 
 
-def get_response_example(responses: Dict[str, Any]) -> Optional[Dict]:
+def get_response_example(responses: dict[str, Any]) -> Optional[dict[str, Any]]:
     """
     Extract example response from OpenAPI responses object.
     
@@ -103,7 +103,7 @@ def get_response_example(responses: Dict[str, Any]) -> Optional[Dict]:
     return None
 
 
-def merge_parameters(path_params: List[Dict], operation_params: List[Dict]) -> List[Dict]:
+def merge_parameters(path_params: list[dict[str, Any]], operation_params: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """
     Merge path-level and operation-level parameters.
     Operation parameters override path parameters with the same name.
@@ -116,11 +116,11 @@ def merge_parameters(path_params: List[Dict], operation_params: List[Dict]) -> L
         Merged list of parameters
     """
     # Create a dictionary of path parameters
-    params_dict = {param['name']: param for param in path_params}
+    params_dict: dict[str, dict[str, Any]] = {str(param.get('name', '')): param for param in path_params}
     
     # Override with operation parameters
     for param in operation_params:
-        params_dict[param['name']] = param
+        params_dict[str(param.get('name', ''))] = param
     
     return list(params_dict.values())
 
@@ -167,7 +167,7 @@ def validate_openapi_version(version: str) -> bool:
     return version in supported_versions
 
 
-def generate_postman_variable(key: str, value: Any, var_type: str = 'default', enabled: bool = True) -> Dict:
+def generate_postman_variable(key: str, value: Any, var_type: str = 'default', enabled: bool = True) -> dict[str, Any]:
     """
     Generate a Postman environment variable object.
     
