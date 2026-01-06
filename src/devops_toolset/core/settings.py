@@ -3,7 +3,6 @@
 import pathlib
 import os
 import json
-import pkg_resources
 
 
 class Settings(object):
@@ -21,9 +20,8 @@ class Settings(object):
     project_xml_path = root_path.parent.parent.absolute()
     devops_path: pathlib.Path = pathlib.Path.joinpath(root_path, _DEVOPS).absolute()
     locales_path: pathlib.Path = pathlib.Path.joinpath(root_path, _LOCALES).absolute()
-    log_config_file_path: pathlib.Path = pathlib.Path(pkg_resources.resource_filename
-                                                      (__name__, _CONFIG_SETTINGS_FILE_NAME))
-    settings_path: pathlib.Path = pathlib.Path(pkg_resources.resource_filename(__name__, _SETTINGS_FILE_NAME))
+    log_config_file_path: pathlib.Path = pathlib.Path(_CURRENT_PATH, _CONFIG_SETTINGS_FILE_NAME)
+    settings_path: pathlib.Path = pathlib.Path(_CURRENT_PATH, _SETTINGS_FILE_NAME)
     language: str = "en"
     platform: str = "azuredevops"
     platform_specific_path: pathlib.Path = pathlib.Path.joinpath(devops_path, platform).absolute()
