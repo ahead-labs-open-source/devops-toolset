@@ -7,7 +7,7 @@ It also generates environment files for different deployment environments.
 
 import json
 import yaml
-from datetime import datetime
+from datetime import datetime, timezone
 from collections.abc import Mapping, Sequence
 from typing import Any, Optional, cast
 from pathlib import Path
@@ -644,9 +644,28 @@ class OpenAPIToPostmanConverter:
                 'name': folder_name,
                 'item': requests
             })
+
+        # Prepend a human-readable generation timestamp (GMT) to the collection description.
+        def _ordinal_suffix(day: int) -> str:
+            if 11 <= (day % 100) <= 13:
+                return 'th'
+            return {1: 'st', 2: 'nd', 3: 'rd'}.get(day % 10, 'th')
+
+        generated_at = datetime.now(timezone.utc)
+        human_timestamp = (
+            f"{generated_at.strftime('%B')} {generated_at.day}{_ordinal_suffix(generated_at.day)}, "
+            f"{generated_at.year}, {generated_at.strftime('%H:%M:%S')} GMT"
+        )
+        generated_line = f"Collection generated on {human_timestamp}."
+
+        info_obj_raw: Any = collection.get('info', {})
+        info_obj: dict[str, Any] = cast(dict[str, Any], info_obj_raw) if isinstance(info_obj_raw, dict) else {}
+        existing_desc = str(info_obj.get('description', '') or '').strip()
+        info_obj['description'] = generated_line if not existing_desc else f"{generated_line}\n\n{existing_desc}"
+        collection['info'] = info_obj
         
         # Generate filename with version and timestamp (reusing collection_name for consistency)
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        timestamp = generated_at.strftime('%Y%m%d_%H%M%S')
         filename = f"{sanitize_filename(collection_name)}_{timestamp}_collection.json"
         file_path = self.output_folder / filename
         
