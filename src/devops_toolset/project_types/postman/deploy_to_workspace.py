@@ -1,8 +1,8 @@
 """Deploy Postman collections and environments to a Postman workspace.
 
 This script takes:
-- A Postman collection JSON file (v2.1 export)
-- Zero or more Postman environment JSON files (exported)
+- A Postman collection JSON file (v2.1 export or generated)
+- Zero or more Postman environment JSON files (exported or generated)
 
 And deploys them to a target Postman workspace using the Postman REST API.
 If the collection / environments already exist in the workspace (matched by name),
@@ -39,7 +39,9 @@ DEFAULT_TIMEOUT_SECONDS = 30
 @dataclass(frozen=True)
 class PostmanWorkspaceAssets:
     collections_by_name: dict[str, str]
+    collections_by_api_id: dict[str, str]
     environments_by_name: dict[str, str]
+    environments_by_api_id: dict[str, str]
 
 
 class PostmanApiError(RuntimeError):
@@ -75,6 +77,17 @@ def _collection_name_from_export(collection_export: dict[str, Any]) -> str:
     return name
 
 
+def _collection_api_id_from_export(collection_export: dict[str, Any]) -> str:
+    """Extract x-api-id from collection, fallback to name if not present."""
+    info_raw: Any = collection_export.get("info", {})
+    info = cast(dict[str, Any], info_raw) if isinstance(info_raw, dict) else {}
+    api_id = str(info.get("x-api-id", "")).strip()
+    if api_id:
+        return api_id
+    # Fallback to name for backward compatibility
+    return _collection_name_from_export(collection_export)
+
+
 def _environment_name_from_export(env_export: dict[str, Any]) -> str:
     # Accept either {"environment": {...}} (API format) or export format {...}
     if "environment" in env_export and isinstance(env_export.get("environment"), dict):
@@ -86,6 +99,66 @@ def _environment_name_from_export(env_export: dict[str, Any]) -> str:
     if not name:
         raise ValueError("Environment export is missing name")
     return name
+
+
+def _environment_api_id_from_export(env_export: dict[str, Any]) -> str:
+    """Extract x-api-id from environment, fallback to name if not present."""
+    # Accept either {"environment": {...}} (API format) or export format {...}
+    if "environment" in env_export and isinstance(env_export.get("environment"), dict):
+        env_obj = cast(dict[str, Any], env_export["environment"])
+    else:
+        env_obj = env_export
+
+    api_id = str(env_obj.get("x-api-id", "")).strip()
+    if not api_id:
+        # Fallback to name if no x-api-id
+        api_id = str(env_obj.get("name", "")).strip()
+    return api_id
+
+
+def _strip_version_from_name(name: str) -> str:
+    """
+    Strip version patterns from resource names.
+    Examples:
+        "Test API v1-rev0" -> "Test API"
+        "Test API v1-rev0 v1.0.0" -> "Test API"
+        "Test API v2-rev1 v2.5.0 - Development" -> "Test API - Development"
+    """
+    import re
+    # Remove patterns like " v1-rev0", " v1.0.0", " v1-rev0 v1.0.0"
+    stripped = re.sub(r'\s+v\d+([-.]\w+)*(\s+v?\d+(\.\d+)*)?', '', name, flags=re.IGNORECASE)
+    return stripped.strip()
+
+
+def _find_uid_by_base_name(
+    name_to_find: str,
+    assets_by_name: dict[str, str]
+) -> str | None:
+    """
+    Find a resource UID by comparing base names (without version suffixes).
+    Returns the UID of the first match, or None if no match found.
+    """
+    base_name_to_find = _strip_version_from_name(name_to_find)
+    
+    for existing_name, uid in assets_by_name.items():
+        base_existing_name = _strip_version_from_name(existing_name)
+        if base_existing_name == base_name_to_find:
+            return uid
+    
+    return None
+
+
+
+    if "environment" in env_export and isinstance(env_export.get("environment"), dict):
+        env_obj = cast(dict[str, Any], env_export["environment"])
+    else:
+        env_obj = env_export
+    
+    api_id = str(env_obj.get("x-api-id", "")).strip()
+    if api_id:
+        return api_id
+    # Fallback to name for backward compatibility
+    return _environment_name_from_export(env_export)
 
 
 def _wrap_collection_for_api(collection_export: dict[str, Any]) -> dict[str, Any]:
@@ -156,7 +229,9 @@ def get_workspace_assets(base_url: str, api_key: str, workspace_id: str) -> Post
     workspace = cast(dict[str, Any], workspace_raw) if isinstance(workspace_raw, dict) else {}
 
     collections_by_name: dict[str, str] = {}
+    collections_by_api_id: dict[str, str] = {}
     envs_by_name: dict[str, str] = {}
+    envs_by_api_id: dict[str, str] = {}
 
     collections_raw: Any = workspace.get("collections", [])
     if isinstance(collections_raw, list):
@@ -169,6 +244,19 @@ def get_workspace_assets(base_url: str, api_key: str, workspace_id: str) -> Post
             uid = str(c.get("uid", "")).strip() or str(c.get("id", "")).strip()
             if name and uid:
                 collections_by_name[name] = uid
+                # Fetch full collection to get x-api-id
+                try:
+                    coll_data = _request_json("GET", base_url, f"/collections/{uid}", api_key)
+                    coll_obj_raw: Any = coll_data.get("collection", {})
+                    coll_obj = cast(dict[str, Any], coll_obj_raw) if isinstance(coll_obj_raw, dict) else {}
+                    info_raw: Any = coll_obj.get("info", {})
+                    info = cast(dict[str, Any], info_raw) if isinstance(info_raw, dict) else {}
+                    api_id = str(info.get("x-api-id", "")).strip()
+                    if api_id:
+                        collections_by_api_id[api_id] = uid
+                except Exception:
+                    # Silently ignore errors fetching individual collections
+                    pass
 
     envs_raw: Any = workspace.get("environments", [])
     if isinstance(envs_raw, list):
@@ -181,8 +269,24 @@ def get_workspace_assets(base_url: str, api_key: str, workspace_id: str) -> Post
             uid = str(e.get("uid", "")).strip() or str(e.get("id", "")).strip()
             if name and uid:
                 envs_by_name[name] = uid
+                # Fetch full environment to get x-api-id
+                try:
+                    env_data = _request_json("GET", base_url, f"/environments/{uid}", api_key)
+                    env_obj_raw: Any = env_data.get("environment", {})
+                    env_obj = cast(dict[str, Any], env_obj_raw) if isinstance(env_obj_raw, dict) else {}
+                    api_id = str(env_obj.get("x-api-id", "")).strip()
+                    if api_id:
+                        envs_by_api_id[api_id] = uid
+                except Exception:
+                    # Silently ignore errors fetching individual environments
+                    pass
 
-    return PostmanWorkspaceAssets(collections_by_name=collections_by_name, environments_by_name=envs_by_name)
+    return PostmanWorkspaceAssets(
+        collections_by_name=collections_by_name,
+        collections_by_api_id=collections_by_api_id,
+        environments_by_name=envs_by_name,
+        environments_by_api_id=envs_by_api_id
+    )
 
 
 def upsert_collection(
@@ -191,10 +295,19 @@ def upsert_collection(
     workspace_id: str,
     collection_export: dict[str, Any],
 ) -> tuple[str, str]:
+    api_id = _collection_api_id_from_export(collection_export)
     name = _collection_name_from_export(collection_export)
     assets = get_workspace_assets(base_url, api_key, workspace_id)
 
-    existing_uid = assets.collections_by_name.get(name)
+    # Try to find existing collection by:
+    # 1. x-api-id (exact match)
+    # 2. Exact name match
+    # 3. Base name match (name without version suffix)
+    existing_uid = (
+        assets.collections_by_api_id.get(api_id) or 
+        assets.collections_by_name.get(name) or
+        _find_uid_by_base_name(name, assets.collections_by_name)
+    )
     payload = _wrap_collection_for_api(collection_export)
 
     if existing_uid:
@@ -221,10 +334,19 @@ def upsert_environment(
     workspace_id: str,
     env_export: dict[str, Any],
 ) -> tuple[str, str, str]:
+    api_id = _environment_api_id_from_export(env_export)
     name = _environment_name_from_export(env_export)
     assets = get_workspace_assets(base_url, api_key, workspace_id)
 
-    existing_uid = assets.environments_by_name.get(name)
+    # Try to find existing environment by:
+    # 1. x-api-id (exact match)
+    # 2. Exact name match
+    # 3. Base name match (name without version suffix)
+    existing_uid = (
+        assets.environments_by_api_id.get(api_id) or 
+        assets.environments_by_name.get(name) or
+        _find_uid_by_base_name(name, assets.environments_by_name)
+    )
     payload = _wrap_environment_for_api(env_export)
 
     if existing_uid:
