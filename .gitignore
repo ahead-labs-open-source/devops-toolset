@@ -29,3 +29,8 @@ devops_toolset/core/*.json*
 # Postman OpenAPI converter artifacts (generated locally)
 src/devops_toolset/project_types/postman/output/
 src/devops_toolset/project_types/postman/openapi.yaml
+src/devops_toolset/project_types/postman/*.temp
+postman_*/
+openapi.yaml
+test_openapi.yaml
+test_api.yaml
