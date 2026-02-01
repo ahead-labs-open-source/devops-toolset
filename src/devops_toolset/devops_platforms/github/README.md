@@ -92,13 +92,110 @@ Documentation reference path to show in error messages. Informational only.
       --template-path .github/workflows/secrets-and-variables.jsonc
 ```
 
+### inject_secrets_and_variables.py
+
+Injects repository and environment-level variables and secrets into GitHub using a JSONC template file.
+
+**Features**:
+- Supports both repository-level and environment-specific variables/secrets
+- Can read secret values directly from template (for dev/test) or fetch from Azure Key Vault (recommended for production)
+- Dry-run mode to preview changes without executing
+- Uses GitHub CLI (`gh`) for authentication and injection
+
+#### Template Format
+
+The script reads a JSONC template file (JSON with comments) structured as:
+
+```jsonc
+{
+  "repository": {
+    "variables": {
+      "ARM_SUBSCRIPTION_ID": "value",
+      "ARM_TENANT_ID": "value"
+    },
+    "secrets": {
+      "POSTMAN_API_KEY": "https://kv-name.vault.azure.net/secrets/secret-name"
+    }
+  },
+  "environments": {
+    "staging": {
+      "variables": {
+        "ARM_CLIENT_ID": "value",
+        "APIM_API_ID": "value"
+      },
+      "secrets": {
+        "ARM_CLIENT_SECRET": "https://kv-name.vault.azure.net/secrets/secret-name"
+      }
+    },
+    "production": {
+      "variables": { },
+      "secrets": { }
+    }
+  }
+}
+```
+
+#### Usage
+
+**Basic usage (secrets as plain text in template)**:
+```bash
+python -m devops_toolset.devops_platforms.github.inject_secrets_and_variables \
+  --template .github/workflows/secrets-and-variables.jsonc \
+  --repo owner/repo-name
+```
+
+**Fetch secrets from Azure Key Vault (recommended)**:
+```bash
+python -m devops_toolset.devops_platforms.github.inject_secrets_and_variables \
+  --template .github/workflows/secrets-and-variables.jsonc \
+  --repo owner/repo-name \
+  --fetch-from-keyvault
+```
+
+**Dry run (preview without executing)**:
+```bash
+python -m devops_toolset.devops_platforms.github.inject_secrets_and_variables \
+  --template .github/workflows/secrets-and-variables.jsonc \
+  --repo owner/repo-name \
+  --dry-run
+```
+
+#### Parameters
+
+**--template PATH** (required)
+
+Path to secrets and variables template file (JSONC format).
+
+**--repo owner/repo-name** (required)
+
+Target GitHub repository in format `owner/repo-name`.
+
+**--fetch-from-keyvault** (optional)
+
+Fetch secret values from Azure Key Vault. Requires Azure CLI authenticated. When enabled, secret values that are Azure Key Vault URLs will be fetched; plain text values are used as-is.
+
+**--dry-run** (optional)
+
+Print what would be done without executing commands.
+
+#### Requirements
+
+- GitHub CLI (`gh`) must be installed and authenticated
+- Azure CLI (`az`) required if using `--fetch-from-keyvault`
+
 ## Authentication
 
-Use a GitHub Personal Access Token with `repo` scope.
+For `validate_environment.py` and `inject_secrets_and_variables.py`:
+- GitHub CLI must be authenticated: `gh auth login`
+- Azure CLI must be authenticated (if fetching from Key Vault): `az login`
 
-Set via `--token` argument or `GITHUB_TOKEN` environment variable.
+For `configure_branch_protection.py`:
+- Use a GitHub Personal Access Token with `repo` scope
+- Set via `--token` argument or `GITHUB_TOKEN` environment variable
 
 ## Requirements
 
 - Python 3.8+
-- PyGithub (`pip install PyGithub`)
+- GitHub CLI (`gh`) - for inject_secrets_and_variables.py
+- Azure CLI (`az`) - optional, for Key Vault integration
+- PyGithub (`pip install PyGithub`) - for configure_branch_protection.py
