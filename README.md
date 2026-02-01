@@ -2,7 +2,6 @@
 
 [![GitHub last commit](https://img.shields.io/github/last-commit/ahead-labs-open-source/devops-toolset)](https://github.com/ahead-labs-open-source/devops-toolset/commits/)
 [![GitHub tag](https://img.shields.io/github/v/tag/ahead-labs-open-source/devops-toolset)](https://github.com/ahead-labs-open-source/devops-toolset/tags)
-
 [![GitHub license](https://img.shields.io/github/license/ahead-labs-open-source/devops-toolset)](https://github.com/ahead-labs-open-source/devops-toolset/blob/main/LICENSE)
 [![GitHub repo size](https://img.shields.io/github/repo-size/ahead-labs-open-source/devops-toolset)](https://github.com/ahead-labs-open-source/devops-toolset)
 [![GitHub top language](https://img.shields.io/github/languages/top/ahead-labs-open-source/devops-toolset)](https://github.com/ahead-labs-open-source/devops-toolset)
@@ -14,59 +13,196 @@
 [![Sonar violations (branch)](https://img.shields.io/sonar/violations/ahead-labs-open-source_devops-toolset/main?server=https%3A%2F%2Fsonarcloud.io)](https://sonarcloud.io/dashboard?id=ahead-labs-open-source_devops-toolset&branch=main)
 [![Sonar coverage (branch)](https://img.shields.io/sonar/coverage/ahead-labs-open-source_devops-toolset/main?server=https%3A%2F%2Fsonarcloud.io)](https://sonarcloud.io/dashboard?id=ahead-labs-open-source_devops-toolset&branch=main)
 
-Everything than can be automated, must be automated!
+> _"Everything that can be automated, must be automated!"_
 
-![Logo](.media/devops-toolset-logo-216x100px.png)
+<img src=".media/devops-process-light-squared.png" alt="DevOps Toolset Logo" width="216" height="216">
 
-## Getting Started
+## 📖 Description
 
-## Description
+DevOps Toolset is a comprehensive Python library that provides general-purpose, DevOps-related scripts, tools, and utilities. It's designed to streamline and automate common DevOps tasks across multiple platforms and project types, making your CI/CD pipelines more efficient and maintainable.
 
-This project contains general purpose, DevOps-related, scripts and tools.
+## ✨ Features
 
-## Prerequisites
+- **Multi-platform Support**: Works with Azure DevOps, AWS, GitHub, and HCP Terraform
+- **Project Type Support**: Specialized tools for Angular, .NET, Node.js, WordPress, PHP, Postman, Linux, Maven, and Azure projects
+- **Internationalization (i18n)**: Built-in support for multiple languages
+- **Logging & Diagnostics**: Comprehensive logging capabilities with customizable formatters
+- **File System Operations**: Rich set of file system utilities, parsers, and tools
+- **CLI Automation**: Tools for command-line automation and subprocess management
+- **Git & SVN Integration**: Version control system utilities
+- **Extensible Architecture**: Modular design with easy-to-extend commands and literals
 
-- You need Python 3.8.2+ installed on your machine. Please follow the instructions on the [Python web site](https://www.python.org/downloads/).
-- You also need to have pip package manager installed.
+## 🚀 Getting Started
 
-## How to use
+### Prerequisites
 
-1. Install from the [PyPI package index](https://pypi.org/project/devops-toolset/) using the following command:
-   ```pip install devops-toolset```
-2. Reference the package in your pipeline to have these tools available.
+- **Python 3.9+** (supports 3.9, 3.10, 3.11, 3.12, 3.13, 3.14)
+- **pip** package manager
 
-## Running the tests
+### Installation
 
-### Unit tests
-
-Install dev/test dependencies:
-
-```bash
-python -m pip install -r requirements-dev.txt
-```
-
-Then run the tests from the repository root:
+Install from the PyPI package index:
 
 ```bash
-python -m pytest
+pip install devops-toolset
 ```
 
-## File structure
+### Basic Usage
 
-| Directory / file | Description |
-| -- | -- |
-| /.devops | Contains pipeline definitions for the project |
-| /core | Core settings for devops-toolset |
-| /.devops-platforms | Contains platform-specific code |
-| /filesystem | File system related tools |
-| /i18n | Internationalization related tools |
-| /json-schemas | Json schemas that support needed JSON document structures |
-| /project types | Contains scripts and tools related to specific project types like Angular, AWS, .NET, Linux, Maven, NodeJS, PHP os WordPress |
-| /tools | Contains helpers and tools used in scripts |
-| /toolset | Script that downloads "manually" this toolset to a directory (deprecated) |
-| /project.xml | Project description and project version |
+Import and use the toolset in your Python scripts:
 
-## WordPress tools
+```python
+from devops_toolset.core.app import App
+from devops_toolset.core.commands_core import CommandsCore
+from devops_toolset.core.literals_core import LiteralsCore
 
-This repository relies on WP CLI for WordPress automation. Please refer to [WP-CLI handbook](https://make.wordpress.org/cli/handbook/) for more information and installation instructions.
+# Initialize the application
+app = App()
+
+# Access commands and literals for your specific needs
+commands = CommandsCore()
+literals = LiteralsCore()
+```
+
+## 🧪 Running Tests
+
+Install development dependencies:
+
+```bash
+pip install -r requirements-dev.txt
+```
+
+Run tests with pytest:
+
+```bash
+pytest
+```
+
+## 📁 Project Structure
+
+```
+devops-toolset/
+├── src/devops_toolset/
+│   ├── core/                    # Core application logic, settings, and logging
+│   │   ├── app.py               # Main application bootstrapping
+│   │   ├── commands_core.py     # Base commands infrastructure
+│   │   ├── literals_core.py     # Base literals/translations infrastructure
+│   │   ├── log_setup.py         # Logging configuration
+│   │   └── settings.json        # Application settings
+│   │
+│   ├── devops_platforms/        # Platform-specific implementations
+│   │   ├── azuredevops/         # Azure DevOps integration
+│   │   ├── aws/                 # AWS integration
+│   │   ├── github/              # GitHub integration
+│   │   ├── hcp_terraform/       # HCP Terraform integration
+│   │   └── sonarx.py            # SonarQube/SonarCloud utilities
+│   │
+│   ├── project_types/           # Project type-specific tools
+│   │   ├── angular/             # Angular project utilities
+│   │   ├── aws/                 # AWS project utilities
+│   │   ├── azure/               # Azure project utilities (Functions, Static Web Apps)
+│   │   ├── dotnet/              # .NET project utilities
+│   │   ├── linux/               # Linux utilities
+│   │   ├── maven/               # Maven project utilities
+│   │   ├── node/                # Node.js project utilities
+│   │   ├── php/                 # PHP project utilities
+│   │   ├── postman/             # Postman collection utilities
+│   │   └── wordpress/           # WordPress utilities (WP-CLI integration)
+│   │
+│   ├── filesystem/              # File system operations
+│   │   ├── parsers.py           # File parsers (XML, JSON, etc.)
+│   │   ├── paths.py             # Path manipulation utilities
+│   │   ├── tools.py             # General file system tools
+│   │   └── zip.py               # Archive operations
+│   │
+│   ├── tools/                   # General-purpose tools
+│   │   ├── cli.py               # CLI and subprocess utilities
+│   │   ├── git.py               # Git operations
+│   │   ├── svn.py               # SVN operations
+│   │   ├── dicts.py             # Dictionary utilities
+│   │   ├── http_protocol.py    # HTTP utilities
+│   │   └── xmlparser.py         # XML parsing utilities
+│   │
+│   ├── i18n/                    # Internationalization
+│   │   ├── loader.py            # i18n loader
+│   │   └── literals.py          # Translation literals
+│   │
+│   ├── locales/                 # Translation files
+│   │   └── */LC_MESSAGES/       # Language-specific translations
+│   │
+│   └── json_schemas/            # JSON schemas for validation
+│
+├── tests/                       # Test suite
+│   ├── core/                    # Core tests
+│   ├── devops_platforms/        # Platform tests
+│   ├── project_types/           # Project type tests
+│   ├── filesystem/              # Filesystem tests
+│   └── tools/                   # Tools tests
+│
+├── project.xml                  # Project metadata and version
+├── setup.py                     # Package setup configuration
+├── pyproject.toml               # Build system configuration
+├── requirements.txt             # Production dependencies
+└── requirements-dev.txt         # Development dependencies
+```
+
+## 🔧 Key Modules
+
+### Core
+- **App**: Application bootstrapping and initialization
+- **CommandsCore**: Centralized command management
+- **LiteralsCore**: Internationalization and string literals
+- **Log Setup**: Configurable logging infrastructure
+
+### DevOps Platforms
+- **Azure DevOps**: Build definitions, pipelines, work items
+- **AWS**: Resource management and deployment
+- **GitHub**: Repository operations
+- **HCP Terraform**: Infrastructure as Code operations
+
+### Project Types
+Each project type module provides specialized commands, utilities, and automation:
+- **.NET**: Build, test, EF migrations, package management
+- **Angular**: Build and deployment utilities
+- **Node.js**: npm operations and project management
+- **WordPress**: WP-CLI integration, theme/plugin management
+- **Postman**: Collection management and API testing
+
+### Tools
+- **CLI**: Subprocess execution, title printing, command-line operations
+- **Git/SVN**: Version control operations
+- **File System**: Parsing, path manipulation, zip operations
+
+## 🌐 WordPress Tools
+
+This toolset includes comprehensive WordPress automation using WP-CLI. For more information, refer to the [WP-CLI Handbook](https://make.wordpress.org/cli/handbook/).
+
+## 📝 Configuration
+
+Configure platform-specific settings in `src/devops_toolset/core/settings.json`. The default platform is Azure DevOps.
+
+## 🤝 Contributing
+
+Contributions are welcome! Please follow the existing code structure and naming conventions:
+- Use lowercase, underscore-separated names for Python files
+- Place platform-specific code in the appropriate `devops_platforms/` subdirectory
+- Add tests for new functionality in the corresponding `tests/` subdirectory
+
+## 📄 License
+
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+
+## 🔗 Links
+
+- **PyPI Package**: [https://pypi.org/project/devops-toolset/](https://pypi.org/project/devops-toolset/)
+- **GitHub Repository**: [https://github.com/ahead-labs-open-source/devops-toolset](https://github.com/ahead-labs-open-source/devops-toolset)
+- **Issues**: [https://github.com/ahead-labs-open-source/devops-toolset/issues](https://github.com/ahead-labs-open-source/devops-toolset/issues)
+
+## 🏢 Organization
+
+Maintained by **Ahead Labs**
+
+---
+
+_Current version: 2.20.0_
 
