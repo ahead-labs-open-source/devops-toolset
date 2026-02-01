@@ -204,5 +204,5 @@ Maintained by **Ahead Labs**
 
 ---
 
-_Current version: 2.20.0_
+_Current version: 2.21.0_
 
