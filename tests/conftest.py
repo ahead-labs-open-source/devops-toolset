@@ -7,6 +7,18 @@ Add here whatever you want to pass as a fixture in your core.
         - Add a class that contains what you want to pass as a fixture in your core.
         - Create a fixture with that same lowered name that returns an instance to that class."""
 
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+
+# Ensure the local src-layout package is importable during tests.
+# This prevents accidentally importing a globally installed `devops_toolset`.
+_REPO_ROOT = Path(__file__).resolve().parents[1]
+_SRC_PATH = _REPO_ROOT / "src"
+sys.path.insert(0, str(_SRC_PATH))
+
 from unittest import mock
 
 import pytest

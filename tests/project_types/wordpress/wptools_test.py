@@ -9,7 +9,7 @@ import devops_toolset.project_types.wordpress.basic_structure_starter
 import devops_toolset.project_types.wordpress.wptools as sut
 from devops_toolset.filesystem import paths
 from devops_toolset.project_types.wordpress.basic_structure_starter import BasicStructureStarter
-from devops_toolset.devops_platforms import constants as devops_platform_constants
+from devops_toolset.saas_platforms import constants as devops_platform_constants
 import devops_toolset.project_types.wordpress.constants as wp_constants
 from devops_toolset.core.LiteralsCore import LiteralsCore
 from devops_toolset.project_types.wordpress.literals import Literals as WordpressLiterals
