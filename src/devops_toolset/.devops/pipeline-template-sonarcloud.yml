@@ -35,6 +35,6 @@ steps:
     inputs:
       scriptSource: 'inline'
       script: |
-        import devops_toolset.devops_platforms.sonarx
-        devops_toolset.devops_platforms.sonarx.get_quality_gate_status("$(System.DefaultWorkingDirectory)/src/devops_toolset/.devops/sonar-project.properties", "$(SONAR_TOKEN)", "$(CURRENT_BRANCH)", "$(Build.Reason)" == "PullRequest")
+        import devops_toolset.saas_platforms.sonarx
+        devops_toolset.saas_platforms.sonarx.get_quality_gate_status("$(System.DefaultWorkingDirectory)/src/devops_toolset/.devops/sonar-project.properties", "$(SONAR_TOKEN)", "$(CURRENT_BRANCH)", "$(Build.Reason)" == "PullRequest")
       failOnStderr: true

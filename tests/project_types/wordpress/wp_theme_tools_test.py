@@ -2,7 +2,7 @@
 import json
 import pathlib
 
-from devops_toolset.devops_platforms import constants as devops_platforms_constants
+from devops_toolset.saas_platforms import constants as devops_platforms_constants
 import devops_toolset.project_types.wordpress.wp_theme_tools as sut
 import pytest
 import devops_toolset.project_types.wordpress.constants as wp_constants
