@@ -16,7 +16,7 @@ Environment Variables:
 import argparse
 import os
 import sys
-from typing import Dict, List, Set
+from typing import Dict, List, Optional, Set
 import requests
 
 
@@ -276,6 +276,13 @@ def verify_configuration(
     varsets: Dict[str, dict]
 ):
     """Verify current configuration and report status"""
+
+    def _association_status(should_have: bool, currently_has: bool) -> Optional[str]:
+        if not (should_have or currently_has):
+            return None
+        if should_have:
+            return "✅" if currently_has else "❌ MISSING"
+        return "⚠️  EXTRA"
     
     print(f"\n📋 Configuration Report for Organization: {ORGANIZATION}\n")
     print("=" * 80)
@@ -305,47 +312,43 @@ def verify_configuration(
     
     # Show current associations
     print("\n📊 Current Variable Set Associations:\n")
-    
+
+    configured_workspaces = {
+        workspace_name: workspace_id
+        for workspace_name, workspace_id in workspaces.items()
+        if workspace_name in WORKSPACE_CONFIG
+    }
+    configured_workspace_names = sorted(configured_workspaces.keys())
+
     for provider, varset_name in VARIABLE_SETS.items():
         if varset_name not in varsets:
             continue
-        
+
         print(f"\n{varset_name}:")
         print("-" * 40)
-        
+
         varset_info = varsets[varset_name]
         varset_id = varset_info["id"]
-        
+
         if varset_info["global"]:
             print("  🌍 GLOBAL - All workspaces have access")
             continue
-        
+
         current_associations = api.get_varset_workspaces(varset_id)
-        
-        for workspace_name in sorted(WORKSPACE_CONFIG.keys()):
-            if workspace_name not in workspaces:
-                continue
-            
-            workspace_id = workspaces[workspace_name]
+
+        for workspace_name in configured_workspace_names:
+            workspace_id = configured_workspaces[workspace_name]
             should_have = provider in WORKSPACE_CONFIG[workspace_name]
             currently_has = workspace_id in current_associations
-            
-            if should_have and currently_has:
-                status = "✅"
-            elif should_have and not currently_has:
-                status = "❌ MISSING"
-            elif not should_have and currently_has:
-                status = "⚠️  EXTRA"
-            else:
-                status = "⚪"
-            
-            if should_have or currently_has:
+
+            status = _association_status(should_have, currently_has)
+            if status is not None:
                 print(f"  {status} {workspace_name}")
     
     print("\n" + "=" * 80)
 
 
-def main():
+def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Manage HCP Terraform variable set associations"
     )
@@ -368,70 +371,100 @@ def main():
         action="store_true",
         help="Convert global variable sets to workspace-specific associations",
     )
-    
-    args = parser.parse_args()
-    
-    # Get token
+    return parser.parse_args()
+
+
+def _get_token_or_exit(args: argparse.Namespace) -> str:
     token = args.token or os.environ.get("TFC_TOKEN")
-    if not token:
-        print("❌ Error: No API token provided")
-        print("   Use --token YOUR_TOKEN or set TFC_TOKEN environment variable")
-        sys.exit(1)
-    
-    # Initialize API client
+    if token:
+        return token
+
+    print("❌ Error: No API token provided")
+    print("   Use --token YOUR_TOKEN or set TFC_TOKEN environment variable")
+    sys.exit(1)
+
+
+def _fetch_state(api: TerraformCloudAPI) -> tuple[Dict[str, str], Dict[str, dict]]:
+    print("🔍 Fetching workspaces and variable sets...")
+    workspaces = api.get_workspaces()
+    varsets = api.get_variable_sets()
+
+    print(f"   Found {len(workspaces)} workspaces")
+    print(f"   Found {len(varsets)} variable sets")
+    return workspaces, varsets
+
+
+def _convert_global_varsets_to_workspace_specific(
+    api: TerraformCloudAPI,
+    workspaces: Dict[str, str],
+    varsets: Dict[str, dict],
+    dry_run: bool,
+) -> None:
+    global_varsets = [
+        (name, info) for name, info in varsets.items()
+        if info.get("global") and name in VARIABLE_SETS.values()
+    ]
+
+    if not global_varsets:
+        print("\n✅ No global variable sets to convert!")
+        return
+
+    prefix = "DRY RUN - " if dry_run else ""
+    print(
+        f"\n{prefix}Converting {len(global_varsets)} variable sets from global to workspace-specific:\n"
+    )
+
+    for varset_name, varset_info in global_varsets:
+        print(f"  🔄 Converting '{varset_name}' to workspace-specific")
+        if not dry_run:
+            api.set_global_scope(varset_info["id"], False)
+
+        provider = next(
+            (p for p, vs in VARIABLE_SETS.items() if vs == varset_name),
+            None,
+        )
+        if provider is None:
+            continue
+
+        for workspace_name, workspace_id in workspaces.items():
+            required_providers = WORKSPACE_CONFIG.get(workspace_name)
+            if not required_providers or provider not in required_providers:
+                continue
+
+            print(f"     ➕ Adding {workspace_name}")
+            if not dry_run:
+                api.associate_workspace(varset_info["id"], workspace_id)
+
+    if dry_run:
+        print("\n⚠️  This was a dry run. Use without --dry-run to apply changes.")
+    else:
+        print("\n✅ Conversion completed successfully!")
+        print("   Run --verify-only to see the new configuration.")
+
+
+def main():
+    args = _parse_args()
+    token = _get_token_or_exit(args)
     api = TerraformCloudAPI(token)
-    
+
     try:
-        # Fetch current state
-        print("🔍 Fetching workspaces and variable sets...")
-        workspaces = api.get_workspaces()
-        varsets = api.get_variable_sets()
-        
-        print(f"   Found {len(workspaces)} workspaces")
-        print(f"   Found {len(varsets)} variable sets")
-        
-        # Handle global to workspace-specific conversion
+        workspaces, varsets = _fetch_state(api)
         if args.convert_to_workspace_specific:
-            global_varsets = [
-                (name, info) for name, info in varsets.items() 
-                if info["global"] and name in VARIABLE_SETS.values()
-            ]
-            
-            if not global_varsets:
-                print("\n✅ No global variable sets to convert!")
-                return
-            
-            print(f"\n{'DRY RUN - ' if args.dry_run else ''}Converting {len(global_varsets)} variable sets from global to workspace-specific:\n")
-            
-            for varset_name, varset_info in global_varsets:
-                print(f"  🔄 Converting '{varset_name}' to workspace-specific")
-                if not args.dry_run:
-                    api.set_global_scope(varset_info["id"], False)
-                    
-                    # Add associations for appropriate workspaces
-                    provider = [p for p, vs in VARIABLE_SETS.items() if vs == varset_name][0]
-                    for workspace_name, workspace_id in workspaces.items():
-                        if workspace_name in WORKSPACE_CONFIG and provider in WORKSPACE_CONFIG[workspace_name]:
-                            print(f"     ➕ Adding {workspace_name}")
-                            if not args.dry_run:
-                                api.associate_workspace(varset_info["id"], workspace_id)
-            
-            if args.dry_run:
-                print("\n⚠️  This was a dry run. Use without --dry-run to apply changes.")
-            else:
-                print("\n✅ Conversion completed successfully!")
-                print("   Run --verify-only to see the new configuration.")
+            _convert_global_varsets_to_workspace_specific(
+                api,
+                workspaces,
+                varsets,
+                dry_run=args.dry_run,
+            )
             return
-        
+
         if args.verify_only:
             verify_configuration(api, workspaces, varsets)
-        else:
-            # Calculate changes
-            changes = calculate_changes(api, workspaces, varsets)
-            
-            # Apply changes
-            apply_changes(api, workspaces, varsets, changes, dry_run=args.dry_run)
-    
+            return
+
+        changes = calculate_changes(api, workspaces, varsets)
+        apply_changes(api, workspaces, varsets, changes, dry_run=args.dry_run)
+
     except requests.exceptions.HTTPError as e:
         print(f"\n❌ API Error: {e}")
         print(f"   Response: {e.response.text}")
