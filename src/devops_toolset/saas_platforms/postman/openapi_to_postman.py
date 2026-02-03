@@ -91,132 +91,151 @@ class OpenAPIToPostmanConverter:
         
         return slug
 
+    def _load_openapi_source_text(self) -> tuple[str, Optional[Path]]:
+        """Load raw OpenAPI source text from URL or local file."""
+
+        parsed_source = urlparse(self.openapi_source)
+        if parsed_source.scheme == "http":
+            raise ValueError("Refusing to download OpenAPI spec over insecure http; use https")
+
+        if is_url(self.openapi_source) or self.openapi_source.startswith(("http://", "https://")):
+            print(f"Downloading OpenAPI spec from: {self.openapi_source}")
+            with urllib.request.urlopen(self.openapi_source) as response:
+                content = response.read().decode("utf-8")
+            return content, None
+
+        file_path = Path(self.openapi_source)
+        if not file_path.exists():
+            raise FileNotFoundError(f"OpenAPI file not found: {self.openapi_source}")
+
+        with open(file_path, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        return content, file_path
+
+    def _parse_openapi_text(self, content: str, file_path: Optional[Path]) -> dict[str, Any]:
+        """Parse OpenAPI spec text as JSON or YAML, optionally guided by a file extension."""
+
+        if file_path is not None:
+            suffix = file_path.suffix.lower()
+            if suffix in [".yaml", ".yml"]:
+                return cast(dict[str, Any], yaml.safe_load(content))
+            if suffix == ".json":
+                return cast(dict[str, Any], json.loads(content))
+
+        try:
+            return cast(dict[str, Any], json.loads(content))
+        except json.JSONDecodeError:
+            return cast(dict[str, Any], yaml.safe_load(content))
+
+    def _load_openapi_spec_from_source(self) -> None:
+        content, file_path = self._load_openapi_source_text()
+        self.openapi_spec = self._parse_openapi_text(content, file_path)
+
+    def _set_api_metadata_from_spec(self) -> None:
+        info = self.openapi_spec.get("info", {})
+        self.api_version = info.get("version", "1.0.0")
+        self.api_title = info.get("title", "API")
+
+        # Generate stable API ID slug (without version)
+        self.api_id_slug = self._generate_api_id_slug(self.api_title)
+
+    def _validate_openapi_version_or_raise(self) -> None:
+        # Basic OpenAPI version validation (non-fatal: raises on clearly unsupported versions)
+        openapi_version = str(self.openapi_spec.get("openapi", "")).strip()
+        if openapi_version and not validate_openapi_version(openapi_version):
+            raise Exception(
+                f"❌ Unsupported OpenAPI version: {openapi_version}. "
+                "Supported versions: 3.0.x and 3.1.0"
+            )
+
+    def _format_version_display(self) -> str:
+        # Determine version display with prefix (avoiding double 'v')
+        version_prefix = "" if self.api_version.startswith("v") else "v"
+        return f"{version_prefix}{self.api_version}"
+
+    def _parse_x_postman_environments(self) -> dict[str, dict[str, str]]:
+        if "x-postman-environments" not in self.openapi_spec:
+            raise Exception(
+                "❌ Missing 'x-postman-environments' section in OpenAPI specification.\n"
+                "Please add the x-postman-environments section with at least one environment configuration.\n"
+                "Example:\n"
+                "x-postman-environments:\n"
+                "  _global:  # Optional: shared variables\n"
+                "    tenantId: \"your-tenant-id\"\n"
+                "  staging:\n"
+                "    clientId: \"your-client-id\"\n"
+                "    clientSecret: \"<replace-with-your-secret>\"\n"
+                "    scope: \"api://your-client-id/.default\""
+            )
+
+        x_postman_envs_raw: Any = self.openapi_spec.get("x-postman-environments", {})
+        if not isinstance(x_postman_envs_raw, dict):
+            raise Exception("❌ 'x-postman-environments' must be a dictionary/object")
+
+        # Narrow unknown types coming from YAML/JSON parsing
+        x_postman_envs: dict[str, dict[str, str]] = {}
+        x_postman_envs_raw_dict = cast(dict[object, Any], x_postman_envs_raw)
+        for env_name_any, env_config_raw in x_postman_envs_raw_dict.items():
+            if not isinstance(env_name_any, str):
+                continue
+            env_name = env_name_any
+            if isinstance(env_config_raw, dict):
+                env_config_raw_dict = cast(dict[str, Any], env_config_raw)
+                env_config: dict[str, str] = {
+                    str(k): "" if v is None else str(v)
+                    for k, v in env_config_raw_dict.items()
+                }
+            else:
+                env_config = {}
+            x_postman_envs[env_name] = env_config
+
+        return x_postman_envs
+
+    def _load_or_validate_environments(self, version_display: str) -> None:
+        if self.environments is None:
+            x_postman_envs = self._parse_x_postman_environments()
+
+            # Extract _global variables (if present) and filter from environments
+            self.global_vars = x_postman_envs.get("_global", {})
+            env_list: list[str] = [k for k in x_postman_envs.keys() if k != "_global"]
+
+            # Validate at least one environment exists (excluding _global)
+            if not env_list:
+                raise Exception(
+                    "❌ The 'x-postman-environments' section has no environments defined.\n"
+                    "At least one environment (other than _global) must be defined."
+                )
+
+            self.environments = env_list
+
+            print(f"Loaded OpenAPI spec: {self.api_title} {version_display}")
+            if self.global_vars:
+                print(f"Detected global variables: {', '.join(self.global_vars.keys())}")
+            print(f"Detected environments from x-postman-environments: {', '.join(self.environments)}")
+
+            # Validate environment consistency (excluding _global)
+            envs_without_global: dict[str, dict[str, str]] = {
+                k: v for k, v in x_postman_envs.items() if k != "_global"
+            }
+            self._validate_environment_consistency(envs_without_global)
+            return
+
+        print(f"Loaded OpenAPI spec: {self.api_title} {version_display}")
+        assert self.environments is not None
+        print(f"Using provided environments: {', '.join(self.environments)}")
+
     def load_openapi_spec(self) -> None:
         """
         Load OpenAPI specification from file or URL.
         Supports both JSON and YAML formats.
         """
         try:
-            # Check if source is a URL
-            parsed_source = urlparse(self.openapi_source)
-            if parsed_source.scheme == "http":
-                raise ValueError("Refusing to download OpenAPI spec over insecure http; use https")
-
-            if is_url(self.openapi_source) or self.openapi_source.startswith(('http://', 'https://')):
-                print(f"Downloading OpenAPI spec from: {self.openapi_source}")
-                with urllib.request.urlopen(self.openapi_source) as response:
-                    content = response.read().decode('utf-8')
-                    # Try JSON first, then YAML
-                    try:
-                        self.openapi_spec = json.loads(content)
-                    except json.JSONDecodeError:
-                        self.openapi_spec = yaml.safe_load(content)
-            else:
-                # Load from local file
-                file_path = Path(self.openapi_source)
-                if not file_path.exists():
-                    raise FileNotFoundError(f"OpenAPI file not found: {self.openapi_source}")
-                
-                with open(file_path, 'r', encoding='utf-8') as f:
-                    content = f.read()
-                    
-                # Detect format by extension or content
-                if file_path.suffix.lower() in ['.yaml', '.yml']:
-                    self.openapi_spec = yaml.safe_load(content)
-                elif file_path.suffix.lower() == '.json':
-                    self.openapi_spec = json.loads(content)
-                else:
-                    # Try to auto-detect
-                    try:
-                        self.openapi_spec = json.loads(content)
-                    except json.JSONDecodeError:
-                        self.openapi_spec = yaml.safe_load(content)
-            
-            # Extract API information
-            info = self.openapi_spec.get('info', {})
-            self.api_version = info.get('version', '1.0.0')
-            self.api_title = info.get('title', 'API')
-            
-            # Generate stable API ID slug (without version)
-            self.api_id_slug = self._generate_api_id_slug(self.api_title)
-
-            # Basic OpenAPI version validation (non-fatal: raises on clearly unsupported versions)
-            openapi_version = str(self.openapi_spec.get('openapi', '')).strip()
-            if openapi_version and not validate_openapi_version(openapi_version):
-                raise Exception(
-                    f"❌ Unsupported OpenAPI version: {openapi_version}. "
-                    "Supported versions: 3.0.x and 3.1.0"
-                )
-            
-            # Determine version display with prefix (avoiding double 'v')
-            version_prefix = '' if self.api_version.startswith('v') else 'v'
-            version_display = f"{version_prefix}{self.api_version}"
-            
-            # If environments not provided, read from x-postman-environments
-            if self.environments is None:
-                # Validate x-postman-environments exists
-                if 'x-postman-environments' not in self.openapi_spec:
-                    raise Exception(
-                        "❌ Missing 'x-postman-environments' section in OpenAPI specification.\n"
-                        "Please add the x-postman-environments section with at least one environment configuration.\n"
-                        "Example:\n"
-                        "x-postman-environments:\n"
-                        "  _global:  # Optional: shared variables\n"
-                        "    tenantId: \"your-tenant-id\"\n"
-                        "  staging:\n"
-                        "    clientId: \"your-client-id\"\n"
-                        "    clientSecret: \"<replace-with-your-secret>\"\n"
-                        "    scope: \"api://your-client-id/.default\""
-                    )
-                
-                x_postman_envs_raw: Any = self.openapi_spec.get('x-postman-environments', {})
-                if not isinstance(x_postman_envs_raw, dict):
-                    raise Exception("❌ 'x-postman-environments' must be a dictionary/object")
-
-                # Narrow unknown types coming from YAML/JSON parsing
-                x_postman_envs: dict[str, dict[str, str]] = {}
-                x_postman_envs_raw_dict = cast(dict[object, Any], x_postman_envs_raw)
-                for env_name_any, env_config_raw in x_postman_envs_raw_dict.items():
-                    if not isinstance(env_name_any, str):
-                        continue
-                    env_name = env_name_any
-                    if isinstance(env_config_raw, dict):
-                        env_config_raw_dict = cast(dict[str, Any], env_config_raw)
-                        env_config: dict[str, str] = {
-                            str(k): "" if v is None else str(v)
-                            for k, v in env_config_raw_dict.items()
-                        }
-                    else:
-                        env_config = {}
-                    x_postman_envs[env_name] = env_config
-                
-                # Extract _global variables (if present) and filter from environments
-                self.global_vars = x_postman_envs.get('_global', {})
-                env_list: list[str] = [k for k in x_postman_envs.keys() if k != '_global']
-                
-                # Validate at least one environment exists (excluding _global)
-                if not env_list or len(env_list) == 0:
-                    raise Exception(
-                        "❌ The 'x-postman-environments' section has no environments defined.\n"
-                        "At least one environment (other than _global) must be defined."
-                    )
-                
-                self.environments = env_list
-                print(f"Loaded OpenAPI spec: {self.api_title} {version_display}")
-                if self.global_vars:
-                    print(f"Detected global variables: {', '.join(self.global_vars.keys())}")
-                print(f"Detected environments from x-postman-environments: {', '.join(self.environments)}")
-                
-                # Validate environment consistency (excluding _global)
-                envs_without_global: dict[str, dict[str, str]] = {
-                    k: v for k, v in x_postman_envs.items() if k != '_global'
-                }
-                self._validate_environment_consistency(envs_without_global)
-            else:
-                print(f"Loaded OpenAPI spec: {self.api_title} {version_display}")
-                assert self.environments is not None
-                print(f"Using provided environments: {', '.join(self.environments)}")
-            
+            self._load_openapi_spec_from_source()
+            self._set_api_metadata_from_spec()
+            self._validate_openapi_version_or_raise()
+            version_display = self._format_version_display()
+            self._load_or_validate_environments(version_display)
         except Exception as e:
             raise Exception(f"Error loading OpenAPI specification: {str(e)}")
 
