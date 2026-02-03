@@ -774,6 +774,150 @@ class OpenAPIToPostmanConverter:
 
         return self._write_collection_file(collection, generated_at, collection_name)
 
+    def _environment_name_base(self) -> str:
+        version_prefix = '' if self.api_version.startswith('v') else 'v'
+        return f"{self.api_title} {version_prefix}{self.api_version}"
+
+    def _get_x_postman_envs(self) -> dict[str, Any]:
+        assert self.openapi_spec is not None
+        x_postman_envs_raw: Any = self.openapi_spec.get('x-postman-environments', {})
+        return cast(dict[str, Any], x_postman_envs_raw) if isinstance(x_postman_envs_raw, dict) else {}
+
+    def _get_env_config(self, x_postman_envs: dict[str, Any], env_name: str) -> dict[str, str]:
+        env_config_raw: Any = x_postman_envs.get(env_name, {})
+        return cast(dict[str, str], env_config_raw) if isinstance(env_config_raw, dict) else {}
+
+    def _merge_global_and_env_config(self, env_config: dict[str, str]) -> dict[str, str]:
+        return {**self.global_vars, **env_config}
+
+    def _choose_first_server_url(
+        self,
+        servers: list[Any],
+        default_url: str,
+        predicate: Any,
+    ) -> str:
+        for server in servers:
+            if not isinstance(server, dict):
+                continue
+            if predicate(server):
+                return str(server.get('url', default_url))
+        return default_url
+
+    @staticmethod
+    def _is_staging_server(server: dict[str, Any]) -> bool:
+        url = str(server.get('url', '') or '').lower()
+        desc = str(server.get('description', '') or '').lower()
+        return 'stg' in url or 'staging' in desc
+
+    @staticmethod
+    def _is_production_server(server: dict[str, Any]) -> bool:
+        url = str(server.get('url', '') or '').lower()
+        desc = str(server.get('description', '') or '').lower()
+        return 'stg' not in url and 'staging' not in desc
+
+    def _select_environment_server_url(self, env_name: str, default_base_url: str) -> str:
+        assert self.openapi_spec is not None
+
+        if env_name not in {'staging', 'production'}:
+            return default_base_url
+
+        servers_raw: Any = self.openapi_spec.get('servers', [])
+        servers: list[Any] = servers_raw if isinstance(servers_raw, list) else []
+
+        if env_name == 'staging':
+            return self._choose_first_server_url(servers, default_base_url, self._is_staging_server)
+
+        return self._choose_first_server_url(servers, default_base_url, self._is_production_server)
+
+    def _build_environment_values(
+        self,
+        env_name: str,
+        env_base_url: str,
+        merged_config: dict[str, str],
+    ) -> list[dict[str, Any]]:
+        return [
+            {
+                'key': 'baseUrl',
+                'value': env_base_url,
+                'type': 'default',
+                'enabled': True,
+            },
+            {
+                'key': 'environment',
+                'value': env_name,
+                'type': 'default',
+                'enabled': True,
+            },
+            {
+                'key': 'tenantId',
+                'value': merged_config.get('tenantId', ''),
+                'type': 'secret',
+                'enabled': True,
+            },
+            {
+                'key': 'clientId',
+                'value': merged_config.get('clientId', ''),
+                'type': 'secret',
+                'enabled': True,
+            },
+            {
+                'key': 'clientSecret',
+                'value': merged_config.get('clientSecret', '<replace-with-your-secret>'),
+                'type': 'secret',
+                'enabled': True,
+            },
+            {
+                'key': 'scope',
+                'value': merged_config.get('scope', 'api://.default'),
+                'type': 'default',
+                'enabled': True,
+            },
+            {
+                'key': 'accessToken',
+                'value': '',
+                'type': 'secret',
+                'enabled': True,
+            },
+        ]
+
+    @staticmethod
+    def _infer_postman_value_type(key: str) -> str:
+        return 'secret' if re.search(r'(secret|token|key|password)', key, flags=re.IGNORECASE) else 'default'
+
+    def _append_additional_environment_values(
+        self,
+        values: list[dict[str, Any]],
+        merged_config: dict[str, str],
+    ) -> None:
+        existing_keys = {v.get('key') for v in values if isinstance(v, dict)}
+        for key in sorted(merged_config.keys()):
+            if key in existing_keys:
+                continue
+            values.append(
+                {
+                    'key': key,
+                    'value': merged_config.get(key, ''),
+                    'type': self._infer_postman_value_type(key),
+                    'enabled': True,
+                }
+            )
+
+    def _write_environment_file(
+        self,
+        environment: dict[str, Any],
+        filename_base: str,
+        timestamp: str,
+        env_name: str,
+    ) -> str:
+        filename = f"{filename_base}_{timestamp}_{env_name}_environment.json"
+        file_path = self.output_folder / filename
+
+        with open(file_path, 'w', encoding='utf-8') as f:
+            json.dump(environment, f, indent=2, ensure_ascii=False)
+
+        print(f"Generated environment: {file_path}")
+        return str(file_path)
+
     def generate_environment_files(self) -> list[str]:
         """
         Generate Postman environment files for each specified environment.
@@ -781,131 +925,40 @@ class OpenAPIToPostmanConverter:
         Returns:
             List of paths to generated environment files
         """
-        if not self.openapi_spec:
-            raise Exception("OpenAPI specification not loaded. Call load_openapi_spec() first.")
-        
+        self._require_openapi_loaded()
+
         base_url = self._get_base_url()
         generated_files: list[str] = []
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        
-        # Determine name prefix with version (avoiding double 'v' prefix)
-        version_prefix = '' if self.api_version.startswith('v') else 'v'
-        name_base = f"{self.api_title} {version_prefix}{self.api_version}"
+
+        name_base = self._environment_name_base()
         filename_base = sanitize_filename(name_base)
-        
-        # Get x-postman-environments from OpenAPI spec (if exists)
-        x_postman_envs_raw: Any = self.openapi_spec.get('x-postman-environments', {})
-        x_postman_envs: dict[str, Any] = cast(dict[str, Any], x_postman_envs_raw) if isinstance(x_postman_envs_raw, dict) else {}
+        x_postman_envs = self._get_x_postman_envs()
 
         assert self.environments is not None
-        
         for env_name in self.environments:
-            # Get environment-specific values from x-postman-environments
-            env_config_raw: Any = x_postman_envs.get(env_name, {})
-            env_config: dict[str, str] = cast(dict[str, str], env_config_raw) if isinstance(env_config_raw, dict) else {}
-            
-            # Merge global variables with environment-specific ones (env-specific overrides global)
-            merged_config: dict[str, str] = {**self.global_vars, **env_config}
-            
-            # Determine baseUrl based on environment
-            env_base_url = base_url
-            if env_name == 'staging':
-                # Use staging server from OpenAPI servers array
-                servers = self.openapi_spec.get('servers', [])
-                for server in servers:
-                    if 'stg' in server.get('url', '').lower() or 'staging' in server.get('description', '').lower():
-                        env_base_url = server.get('url', base_url)
-                        break
-            elif env_name == 'production':
-                # Use production server (usually the first without staging markers)
-                servers = self.openapi_spec.get('servers', [])
-                for server in servers:
-                    if 'stg' not in server.get('url', '').lower() and 'staging' not in server.get('description', '').lower():
-                        env_base_url = server.get('url', base_url)
-                        break
+            env_config = self._get_env_config(x_postman_envs, env_name)
+            merged_config = self._merge_global_and_env_config(env_config)
 
-            # Build baseUrl as <server-url>/<vN> where vN comes from info.version
-            env_base_url = self._append_version_to_server_url(str(env_base_url))
-            
+            server_url = self._select_environment_server_url(env_name, base_url)
+            env_base_url = self._append_version_to_server_url(str(server_url))
+
+            values = self._build_environment_values(env_name, env_base_url, merged_config)
+            self._append_additional_environment_values(values, merged_config)
+
             environment: dict[str, Any] = {
                 'id': f"{env_name}-{timestamp}",
                 'name': f"{name_base} - {env_name.capitalize()}",
                 'x-api-id': self.api_id_slug,
                 'x-generated-at': self.generated_at_iso,
-                'values': [
-                    {
-                        'key': 'baseUrl',
-                        'value': env_base_url,
-                        'type': 'default',
-                        'enabled': True
-                    },
-                    {
-                        'key': 'environment',
-                        'value': env_name,
-                        'type': 'default',
-                        'enabled': True
-                    },
-                    {
-                        'key': 'tenantId',
-                        'value': merged_config.get('tenantId', ''),
-                        'type': 'secret',
-                        'enabled': True
-                    },
-                    {
-                        'key': 'clientId',
-                        'value': merged_config.get('clientId', ''),
-                        'type': 'secret',
-                        'enabled': True
-                    },
-                    {
-                        'key': 'clientSecret',
-                        'value': merged_config.get('clientSecret', '<replace-with-your-secret>'),
-                        'type': 'secret',
-                        'enabled': True
-                    },
-                    {
-                        'key': 'scope',
-                        'value': merged_config.get('scope', 'api://.default'),
-                        'type': 'default',
-                        'enabled': True
-                    },
-                    {
-                        'key': 'accessToken',
-                        'value': '',
-                        'type': 'secret',
-                        'enabled': True
-                    }
-                ],
-                '_postman_variable_scope': 'environment'
+                'values': values,
+                '_postman_variable_scope': 'environment',
             }
 
-            # Append any additional variables provided via x-postman-environments
-            existing_keys = {v.get('key') for v in environment['values'] if isinstance(v, dict)}
-            for key in sorted(merged_config.keys()):
-                if key in existing_keys:
-                    continue
-                value = merged_config.get(key, '')
-                inferred_type = 'secret' if re.search(r'(secret|token|key|password)', key, flags=re.IGNORECASE) else 'default'
-                environment['values'].append(
-                    {
-                        'key': key,
-                        'value': value,
-                        'type': inferred_type,
-                        'enabled': True
-                    }
-                )
-            
-            # Generate filename using consistent naming (reusing filename_base for consistency)
-            filename = f"{filename_base}_{timestamp}_{env_name}_environment.json"
-            file_path = self.output_folder / filename
-            
-            # Write environment file
-            with open(file_path, 'w', encoding='utf-8') as f:
-                json.dump(environment, f, indent=2, ensure_ascii=False)
-            
-            generated_files.append(str(file_path))
-            print(f"Generated environment: {file_path}")
-        
+            generated_files.append(
+                self._write_environment_file(environment, filename_base, timestamp, env_name)
+            )
+
         return generated_files
 
     def convert(self) -> dict[str, Any]:
