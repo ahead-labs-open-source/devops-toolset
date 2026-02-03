@@ -7,6 +7,11 @@ from unittest.mock import patch, MagicMock, call
 import devops_toolset.saas_platforms.github.inject_secrets_and_variables as sut
 
 
+KEY_LITERAL = '"key"'
+KEYVAULT_URL = "https://kv-test.vault.azure.net/secrets/my-secret"
+REPO_FULL_NAME = "owner/repo"
+
+
 # region strip_jsonc_comments()
 
 def test_strip_jsonc_comments_removes_line_comments():
@@ -24,7 +29,7 @@ def test_strip_jsonc_comments_removes_line_comments():
     
     # Assert
     assert "//" not in result
-    assert '"key"' in result
+    assert KEY_LITERAL in result
     assert '"value"' in result
 
 
@@ -45,7 +50,7 @@ def test_strip_jsonc_comments_removes_block_comments():
     # Assert
     assert "/*" not in result
     assert "*/" not in result
-    assert '"key"' in result
+    assert KEY_LITERAL in result
 
 
 def test_strip_jsonc_comments_handles_multiline_block_comments():
@@ -68,7 +73,7 @@ def test_strip_jsonc_comments_handles_multiline_block_comments():
     # Assert
     assert "/*" not in result
     assert "*/" not in result
-    assert '"key"' in result
+    assert KEY_LITERAL in result
 
 # endregion
 
@@ -137,7 +142,7 @@ def test_is_keyvault_url_returns_true_for_valid_url():
     """Returns True for valid Key Vault URL"""
     
     # Arrange
-    url = "https://kv-test.vault.azure.net/secrets/my-secret"
+    url = KEYVAULT_URL
     
     # Act
     result = sut.is_keyvault_url(url)
@@ -194,7 +199,7 @@ def test_fetch_keyvault_secret_calls_az_cli(subprocess_mock):
     """Calls Azure CLI with correct parameters"""
     
     # Arrange
-    url = "https://kv-test.vault.azure.net/secrets/my-secret"
+    url = KEYVAULT_URL
     subprocess_mock.return_value = MagicMock(stdout="secret-value\n")
     
     # Act
@@ -236,7 +241,7 @@ def test_fetch_keyvault_secret_raises_on_cli_error(subprocess_mock):
     """Raises RuntimeError on Azure CLI error"""
     
     # Arrange
-    url = "https://kv-test.vault.azure.net/secrets/my-secret"
+    url = KEYVAULT_URL
     subprocess_mock.side_effect = sut.subprocess.CalledProcessError(
         1, "az", stderr="Secret not found"
     )
@@ -365,7 +370,7 @@ def test_parse_template_fetches_keyvault_secrets_when_requested(keyvault_mock):
     template = {
         "repository": {
             "secrets": {
-                "SECRET1": "https://kv-test.vault.azure.net/secrets/my-secret"
+                "SECRET1": KEYVAULT_URL
             }
         }
     }
@@ -375,7 +380,7 @@ def test_parse_template_fetches_keyvault_secrets_when_requested(keyvault_mock):
     variables, secrets = sut.parse_template(template, fetch_from_keyvault=True)
     
     # Assert
-    keyvault_mock.assert_called_once_with("https://kv-test.vault.azure.net/secrets/my-secret")
+    keyvault_mock.assert_called_once_with(KEYVAULT_URL)
     assert secrets[0].value == "fetched-secret-value"
 
 
@@ -387,7 +392,7 @@ def test_parse_template_skips_keyvault_fetch_when_not_requested(keyvault_mock):
     template = {
         "repository": {
             "secrets": {
-                "SECRET1": "https://kv-test.vault.azure.net/secrets/my-secret"
+                "SECRET1": KEYVAULT_URL
             }
         }
     }
@@ -397,7 +402,7 @@ def test_parse_template_skips_keyvault_fetch_when_not_requested(keyvault_mock):
     
     # Assert
     keyvault_mock.assert_not_called()
-    assert secrets[0].value == "https://kv-test.vault.azure.net/secrets/my-secret"
+    assert secrets[0].value == KEYVAULT_URL
 
 # endregion
 
@@ -409,7 +414,7 @@ def test_set_repository_variable_calls_gh_cli(subprocess_mock):
     """Calls GitHub CLI with correct parameters"""
     
     # Arrange
-    repo = "owner/repo"
+    repo = REPO_FULL_NAME
     name = "VAR1"
     value = "value1"
     
@@ -434,7 +439,7 @@ def test_set_repository_variable_does_not_execute_in_dry_run(subprocess_mock):
     """Does not execute command in dry run mode"""
     
     # Arrange
-    repo = "owner/repo"
+    repo = REPO_FULL_NAME
     name = "VAR1"
     value = "value1"
     
@@ -454,7 +459,7 @@ def test_set_environment_variable_calls_gh_cli_with_env(subprocess_mock):
     """Calls GitHub CLI with --env parameter"""
     
     # Arrange
-    repo = "owner/repo"
+    repo = REPO_FULL_NAME
     env = "staging"
     name = "VAR1"
     value = "value1"
@@ -483,7 +488,7 @@ def test_inject_variables_and_secrets_calls_all_functions(
     """Calls appropriate functions for each variable/secret type"""
     
     # Arrange
-    repo = "owner/repo"
+    repo = REPO_FULL_NAME
     variables = [
         sut.Variable(name="REPO_VAR", value="value1", scope="repository"),
         sut.Variable(name="ENV_VAR", value="value2", scope="staging")

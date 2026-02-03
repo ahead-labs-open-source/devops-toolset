@@ -7,6 +7,10 @@ from unittest.mock import patch, MagicMock, call
 import devops_toolset.saas_platforms.postman.inject_secrets_and_deploy as sut
 
 
+COLLECTION_FILENAME = "collection.json"
+ENVIRONMENT_FILENAME = "environment.json"
+
+
 # region mask_secret_for_github()
 
 def test_mask_secret_for_github_emits_workflow_command(capsys):
@@ -206,8 +210,8 @@ def test_main_loads_and_deploys_successfully(
     """Successfully loads files and deploys to Postman"""
     
     # Arrange
-    collection_path = tmp_path / "collection.json"
-    env_path = tmp_path / "environment.json"
+    collection_path = tmp_path / COLLECTION_FILENAME
+    env_path = tmp_path / ENVIRONMENT_FILENAME
     collection_path.write_text("{}", encoding='utf-8')
     env_path.write_text("{}", encoding='utf-8')
     
@@ -249,8 +253,8 @@ def test_main_masks_secrets_when_requested(
     """Masks secrets when --mask-secrets flag is used"""
     
     # Arrange
-    collection_path = tmp_path / "collection.json"
-    env_path = tmp_path / "environment.json"
+    collection_path = tmp_path / COLLECTION_FILENAME
+    env_path = tmp_path / ENVIRONMENT_FILENAME
     collection_path.write_text("{}", encoding='utf-8')
     env_path.write_text("{}", encoding='utf-8')
     
@@ -285,8 +289,8 @@ def test_main_returns_error_on_missing_postman_api_key(tmp_path):
     """Returns error code when Postman API key is missing"""
     
     # Arrange
-    collection_path = tmp_path / "collection.json"
-    env_path = tmp_path / "environment.json"
+    collection_path = tmp_path / COLLECTION_FILENAME
+    env_path = tmp_path / ENVIRONMENT_FILENAME
     collection_path.write_text("{}", encoding='utf-8')
     env_path.write_text("{}", encoding='utf-8')
     
@@ -311,7 +315,7 @@ def test_main_returns_error_on_missing_collection_file(tmp_path):
     
     # Arrange
     nonexistent_path = tmp_path / "nonexistent.json"
-    env_path = tmp_path / "environment.json"
+    env_path = tmp_path / ENVIRONMENT_FILENAME
     env_path.write_text("{}", encoding='utf-8')
     
     argv = [
@@ -334,7 +338,7 @@ def test_main_returns_error_on_missing_environment_file(tmp_path):
     """Returns error code when environment file doesn't exist"""
     
     # Arrange
-    collection_path = tmp_path / "collection.json"
+    collection_path = tmp_path / COLLECTION_FILENAME
     collection_path.write_text("{}", encoding='utf-8')
     nonexistent_path = tmp_path / "nonexistent.json"
     
@@ -358,8 +362,8 @@ def test_main_returns_error_on_missing_required_secret(tmp_path):
     """Returns error code when required secret is missing"""
     
     # Arrange
-    collection_path = tmp_path / "collection.json"
-    env_path = tmp_path / "environment.json"
+    collection_path = tmp_path / COLLECTION_FILENAME
+    env_path = tmp_path / ENVIRONMENT_FILENAME
     collection_path.write_text("{}", encoding='utf-8')
     env_path.write_text("{}", encoding='utf-8')
     
@@ -385,8 +389,8 @@ def test_main_injects_all_provided_secrets(load_json_mock, upsert_coll_mock, tmp
     """Injects all provided secrets into environment"""
     
     # Arrange
-    collection_path = tmp_path / "collection.json"
-    env_path = tmp_path / "environment.json"
+    collection_path = tmp_path / COLLECTION_FILENAME
+    env_path = tmp_path / ENVIRONMENT_FILENAME
     collection_path.write_text("{}", encoding='utf-8')
     env_path.write_text("{}", encoding='utf-8')
     

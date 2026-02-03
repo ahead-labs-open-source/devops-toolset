@@ -12,6 +12,9 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 from devops_toolset.saas_platforms.postman.openapi_to_postman import OpenAPIToPostmanConverter
 
 
+SUCCESS_MSG = "\n✓ Conversion successful!"
+
+
 def example_petstore_api():
     """
     Example: Convert the Swagger Petstore API to Postman collection.
@@ -28,7 +31,7 @@ def example_petstore_api():
     try:
         result = converter.convert()
         
-        print("\n✓ Conversion successful!")
+        print(SUCCESS_MSG)
         print(f"  API: {result['api_title']} v{result['api_version']}")
         print(f"  Collection: {result['collection']}")
         print(f"  Environments: {len(result['environments'])} files")
@@ -68,7 +71,7 @@ def example_local_yaml():
     try:
         result = converter.convert()
         
-        print("\n✓ Conversion successful!")
+        print(SUCCESS_MSG)
         print(f"  API: {result['api_title']} v{result['api_version']}")
         print(f"  Collection: {result['collection']}")
         
@@ -95,7 +98,7 @@ def example_custom_configuration():
     try:
         result = converter.convert()
         
-        print("\n✓ Conversion successful!")
+        print(SUCCESS_MSG)
         print(f"  Generated for single environment: local")
         print(f"  Collection: {result['collection']}")
         

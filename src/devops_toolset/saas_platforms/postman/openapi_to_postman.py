@@ -15,6 +15,9 @@ import urllib.request
 import re
 from urllib.parse import urlparse, urlunparse
 
+
+POSTMAN_BASE_URL_TEMPLATE = "{{baseUrl}}"
+
 try:
     # Normal package import
     from devops_toolset.saas_platforms.postman.utils import (
@@ -259,12 +262,12 @@ class OpenAPIToPostmanConverter:
         Extract base URL from OpenAPI servers section.
         
         Returns:
-            Base URL string from servers[0].url, or '{{baseUrl}}' if none.
+            Base URL string from servers[0].url, or a Postman baseUrl template if none.
         """
         servers = self.openapi_spec.get('servers', [])
         if servers:
-            return servers[0].get('url', '{{baseUrl}}')
-        return '{{baseUrl}}'
+            return servers[0].get('url', POSTMAN_BASE_URL_TEMPLATE)
+        return POSTMAN_BASE_URL_TEMPLATE
 
     def _get_version_path_segment(self) -> Optional[str]:
         """Derive a version path segment from info.version.
@@ -298,7 +301,7 @@ class OpenAPIToPostmanConverter:
         if not version_seg:
             return server_url
 
-        # Skip templated values like {{baseUrl}}
+        # Skip templated values like the baseUrl template
         if server_url.strip().startswith('{{'):
             return server_url
 
@@ -490,14 +493,14 @@ class OpenAPIToPostmanConverter:
         # Build URL object.
         # Postman accepts either a raw string or a structured object. Some Postman clients
         # display the URL bar more reliably when host/path are also provided.
-        raw_url = f"{{{{baseUrl}}}}{postman_path}"
+        raw_url = f"{POSTMAN_BASE_URL_TEMPLATE}{postman_path}"
         path_segments = [seg for seg in postman_path.lstrip('/').split('/') if seg]
 
         url_obj: dict[str, Any] = {
             'raw': raw_url,
             # Keep baseUrl as a single host token so environments can override it.
             # baseUrl may include protocol and base path; raw remains the source of truth.
-            'host': ['{{baseUrl}}'],
+            'host': [POSTMAN_BASE_URL_TEMPLATE],
             'path': path_segments,
             'query': param_dict['query'],
         }
