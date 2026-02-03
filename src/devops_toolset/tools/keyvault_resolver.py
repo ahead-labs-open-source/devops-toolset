@@ -27,11 +27,14 @@ import os
 import re
 import subprocess
 from dataclasses import dataclass
+from uuid import uuid4
 
 _KEYVAULT_URL_PATTERN = re.compile(
     r"https://([^.]+)\.vault\.azure\.net/secrets/([^/]+)(/([^?]+))?",
     re.IGNORECASE,
 )
+
+_ENV_NAME_PATTERN = re.compile(r"^[A-Za-z_]\w*$", re.ASCII)
 
 
 @dataclass(frozen=True)
@@ -50,17 +53,26 @@ def _append_github_env(name: str, value: str) -> None:
     if not github_env:
         raise RuntimeError("GITHUB_ENV is not set")
 
+    if not _ENV_NAME_PATTERN.match(name):
+        raise ValueError(
+            f"Invalid output env var name: {name!r}. "
+            "Expected [A-Za-z_][A-Za-z0-9_]*"
+        )
+
     with open(github_env, "a", encoding="utf-8") as f:
-        f.write(f"{name}={value}\n")
+        delimiter = f"KEYVAULT_RESOLVER_{uuid4().hex}"
+        f.write(f"{name}<<{delimiter}\n")
+        f.write(f"{value}\n")
+        f.write(f"{delimiter}\n")
 
 
-def _resolve(value: str) -> str:
+def _resolve(value: str, timeout_seconds: int) -> str:
     if value and _KEYVAULT_URL_PATTERN.match(value):
-        return _fetch_keyvault_secret(value)
+        return _fetch_keyvault_secret(value, timeout_seconds=timeout_seconds)
     return value
 
 
-def _fetch_keyvault_secret(secret_url: str) -> str:
+def _fetch_keyvault_secret(secret_url: str, timeout_seconds: int) -> str:
     match = _KEYVAULT_URL_PATTERN.match(secret_url)
     if not match:
         raise ValueError(f"Invalid Key Vault URL: {secret_url}")
@@ -83,7 +95,20 @@ def _fetch_keyvault_secret(secret_url: str) -> str:
         cmd.extend(["--version", version])
     cmd.extend(["--query", "value", "-o", "tsv"])
 
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    try:
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=timeout_seconds,
+            check=False,
+        )
+    except FileNotFoundError as e:
+        raise RuntimeError("Azure CLI ('az') not found on PATH") from e
+    except subprocess.TimeoutExpired as e:
+        raise RuntimeError(
+            f"Timed out after {timeout_seconds}s fetching Key Vault secret: {secret_url}"
+        ) from e
     if result.returncode != 0:
         stderr = (result.stderr or "").strip()
         raise RuntimeError(
@@ -108,6 +133,18 @@ def _parse_mapping(value: str) -> MappingPair:
             "Invalid --map value. INPUT_ENV and OUTPUT_ENV must be non-empty"
         )
 
+    if not _ENV_NAME_PATTERN.match(input_name):
+        raise argparse.ArgumentTypeError(
+            f"Invalid input env var name: {input_name!r}. "
+            "Expected [A-Za-z_][A-Za-z0-9_]*"
+        )
+
+    if not _ENV_NAME_PATTERN.match(output_name):
+        raise argparse.ArgumentTypeError(
+            f"Invalid output env var name: {output_name!r}. "
+            "Expected [A-Za-z_][A-Za-z0-9_]*"
+        )
+
     return MappingPair(input_name=input_name, output_name=output_name)
 
 
@@ -130,14 +167,25 @@ def main(argv: list[str] | None = None) -> int:
         help="Allow resolved values to be empty (default: fail if empty)",
     )
 
+    parser.add_argument(
+        "--timeout-seconds",
+        type=int,
+        default=60,
+        help="Timeout in seconds for Azure CLI calls (default: 60)",
+    )
+
     args = parser.parse_args(argv)
 
     mappings: list[MappingPair] = args.map
     allow_empty: bool = args.allow_empty
+    timeout_seconds: int = args.timeout_seconds
+
+    if timeout_seconds <= 0:
+        raise ValueError("--timeout-seconds must be > 0")
 
     for mapping in mappings:
         raw_value = os.environ.get(mapping.input_name, "")
-        resolved_value = _resolve(raw_value)
+        resolved_value = _resolve(raw_value, timeout_seconds=timeout_seconds)
 
         if not allow_empty and not resolved_value:
             raise RuntimeError(
