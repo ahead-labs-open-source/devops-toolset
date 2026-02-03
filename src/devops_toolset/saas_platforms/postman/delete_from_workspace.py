@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import argparse
 import os
-from typing import Any, cast
+from collections.abc import Iterable
 
 try:
     # Normal package import
@@ -36,6 +36,93 @@ except ImportError:  # pragma: no cover
         DEFAULT_API_BASE_URL,
         DEFAULT_TIMEOUT_SECONDS,
     )
+
+
+try:
+    from devops_toolset.saas_platforms.postman.utils import strip_version_suffix
+except ImportError:  # pragma: no cover
+    from utils import strip_version_suffix  # type: ignore
+
+
+_ACRONYMS = {"api", "ai", "ui", "id", "url", "http", "https", "rest", "json", "xml"}
+
+
+def _name_pattern_from_x_api_id(x_api_id: str) -> str:
+    words = [w for w in str(x_api_id or "").split("-") if w]
+    if not words:
+        return ""
+
+    name_words: list[str] = []
+    for word in words:
+        if word.lower() in _ACRONYMS:
+            name_words.append(word.upper())
+        else:
+            name_words.append(word.capitalize())
+    return " ".join(name_words)
+
+
+def _iter_assets_matching_name_pattern(
+    assets_by_name: dict[str, str],
+    name_pattern: str,
+    *,
+    strip_dash_suffix: bool,
+) -> Iterable[tuple[str, str]]:
+    for name, uid in assets_by_name.items():
+        if strip_version_suffix(name, strip_dash_suffix=strip_dash_suffix) == name_pattern:
+            yield name, uid
+
+
+def _delete_single_asset(
+    base_url: str,
+    api_key: str,
+    *,
+    asset_kind: str,
+    api_path: str,
+    name: str,
+    uid: str,
+    dry_run: bool,
+) -> bool:
+    if dry_run:
+        print(f"🔍 [DRY-RUN] Would delete {asset_kind}: {name} ({uid})")
+        return False
+
+    try:
+        _request_json("DELETE", base_url, f"{api_path}{uid}", api_key)
+    except Exception as exc:
+        print(f"❌ Failed to delete {asset_kind} {name}: {exc}")
+        return False
+
+    print(f"✅ Deleted {asset_kind}: {name} ({uid})")
+    return True
+
+
+def _delete_assets_matching_name_pattern(
+    base_url: str,
+    api_key: str,
+    *,
+    asset_kind: str,
+    api_path: str,
+    assets_by_name: dict[str, str],
+    name_pattern: str,
+    dry_run: bool,
+    strip_dash_suffix: bool,
+) -> list[str]:
+    deleted: list[str] = []
+    for name, uid in _iter_assets_matching_name_pattern(
+        assets_by_name, name_pattern, strip_dash_suffix=strip_dash_suffix
+    ):
+        deleted_now = _delete_single_asset(
+            base_url,
+            api_key,
+            asset_kind=asset_kind,
+            api_path=api_path,
+            name=name,
+            uid=uid,
+            dry_run=dry_run,
+        )
+        if deleted_now:
+            deleted.append(uid)
+    return deleted
 
 
 def delete_by_api_id(
@@ -63,61 +150,34 @@ def delete_by_api_id(
     """
     assets = get_workspace_assets(base_url, api_key, workspace_id)
 
-    try:
-        from devops_toolset.saas_platforms.postman.utils import strip_version_suffix
-    except ImportError:  # pragma: no cover
-        from utils import strip_version_suffix  # type: ignore
-    
-    deleted_collections: list[str] = []
-    deleted_environments: list[str] = []
-    
     # Convert x-api-id slug to name pattern (e.g., "ai-personal-assistant-api" -> "AI Personal Assistant API")
-    # This is a best-effort conversion since the original casing is lost in the slug
-    # We'll uppercase common acronyms
-    words = x_api_id.split('-')
-    name_words = []
-    acronyms = {'api', 'ai', 'ui', 'id', 'url', 'http', 'https', 'rest', 'json', 'xml'}
-    for word in words:
-        if word.lower() in acronyms:
-            name_words.append(word.upper())
-        else:
-            name_words.append(word.capitalize())
-    name_pattern = ' '.join(name_words)
+    # This is a best-effort conversion since the original casing is lost in the slug.
+    name_pattern = _name_pattern_from_x_api_id(x_api_id)
     
     print(f"Searching for collections/environments matching: '{name_pattern}'")
     print("=" * 70)
-    
-    # Find and delete collections with matching name (ignoring version suffix)
-    for name, uid in assets.collections_by_name.items():
-        # Remove version suffixes like " v1-rev0", " v1.0.0", " v1-rev0 v1.0.0" from name for comparison
-        # Matches patterns like: v1, v1.0, v1.0.0, v1-rev0, v2-rev1, etc. (with or without version number after)
-        base_name = strip_version_suffix(name)
-        if base_name == name_pattern:
-            if dry_run:
-                print(f"🔍 [DRY-RUN] Would delete collection: {name} ({uid})")
-            else:
-                try:
-                    _request_json("DELETE", base_url, f"/collections/{uid}", api_key)
-                    print(f"✅ Deleted collection: {name} ({uid})")
-                    deleted_collections.append(uid)
-                except Exception as e:
-                    print(f"❌ Failed to delete collection {name}: {e}")
-    
-    # Find and delete environments with matching name pattern
-    for name, uid in assets.environments_by_name.items():
-        # Match pattern like "Test API v1-rev0 v1.0.0 - Staging"
-        # Remove both " v1-rev0 v1.0.0" and " - Staging" parts
-        base_name = strip_version_suffix(name, strip_dash_suffix=True)
-        if base_name == name_pattern:
-            if dry_run:
-                print(f"🔍 [DRY-RUN] Would delete environment: {name} ({uid})")
-            else:
-                try:
-                    _request_json("DELETE", base_url, f"/environments/{uid}", api_key)
-                    print(f"✅ Deleted environment: {name} ({uid})")
-                    deleted_environments.append(uid)
-                except Exception as e:
-                    print(f"❌ Failed to delete environment {name}: {e}")
+
+    deleted_collections = _delete_assets_matching_name_pattern(
+        base_url,
+        api_key,
+        asset_kind="collection",
+        api_path="/collections/",
+        assets_by_name=assets.collections_by_name,
+        name_pattern=name_pattern,
+        dry_run=dry_run,
+        strip_dash_suffix=False,
+    )
+
+    deleted_environments = _delete_assets_matching_name_pattern(
+        base_url,
+        api_key,
+        asset_kind="environment",
+        api_path="/environments/",
+        assets_by_name=assets.environments_by_name,
+        name_pattern=name_pattern,
+        dry_run=dry_run,
+        strip_dash_suffix=True,
+    )
     
     if not deleted_collections and not deleted_environments and not dry_run:
         print(f"ℹ️  No collections or environments found matching: {name_pattern}")
