@@ -99,7 +99,7 @@ def example_custom_configuration():
         result = converter.convert()
         
         print(SUCCESS_MSG)
-        print(f"  Generated for single environment: local")
+        print("  Generated for single environment: local")
         print(f"  Collection: {result['collection']}")
         
         return result
