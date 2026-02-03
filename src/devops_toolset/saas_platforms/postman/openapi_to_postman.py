@@ -621,45 +621,76 @@ class OpenAPIToPostmanConverter:
             ]
         }
 
-    def generate_collection(self) -> str:
-        """
-        Generate Postman collection from OpenAPI specification.
-        
-        Returns:
-            Path to generated collection file
-        """
+    @staticmethod
+    def _ordinal_suffix(day: int) -> str:
+        if 11 <= (day % 100) <= 13:
+            return 'th'
+        return {1: 'st', 2: 'nd', 3: 'rd'}.get(day % 10, 'th')
+
+    def _require_openapi_loaded(self) -> None:
         if not self.openapi_spec:
             raise Exception("OpenAPI specification not loaded. Call load_openapi_spec() first.")
-        
+
+    def _get_paths_dict(self) -> dict[str, Any]:
         paths_raw: Any = self.openapi_spec.get('paths', {})
-        paths: dict[str, Any] = cast(dict[str, Any], paths_raw) if isinstance(paths_raw, dict) else {}
-        
-        # Create authentication folder
-        auth_folder: dict[str, Any] = {
+        return cast(dict[str, Any], paths_raw) if isinstance(paths_raw, dict) else {}
+
+    def _format_collection_name(self) -> str:
+        version_display = self._format_version_display()
+        return f"{self.api_title} {version_display}"
+
+    def _create_auth_folder(self) -> dict[str, Any]:
+        return {
             'name': 'Authentication',
             'item': [self._create_auth_request()],
             'description': 'Authentication endpoints'
         }
-        
-        # Determine collection name with version (avoiding double 'v' prefix)
-        version_prefix = '' if self.api_version.startswith('v') else 'v'
-        collection_name = f"{self.api_title} {version_prefix}{self.api_version}"
-        
-        # Create collection structure (all variables are in environment files)
-        collection: dict[str, Any] = {
+
+    def _init_collection(self, collection_name: str) -> dict[str, Any]:
+        return {
             'info': {
                 'name': collection_name,
                 'description': self.openapi_spec.get('info', {}).get('description', ''),
                 'schema': 'https://schema.getpostman.com/json/collection/v2.1.0/collection.json'
             },
-            'item': [auth_folder]
+            'item': [self._create_auth_folder()]
         }
-        
-        # Group endpoints by tags or create flat structure
+
+    def _operation_primary_tag(self, operation: dict[str, Any]) -> str:
+        tags_raw: Any = operation.get('tags', ['Default'])
+        tags: list[str] = [str(t) for t in tags_raw] if isinstance(tags_raw, list) else ['Default']
+        return tags[0] if tags else 'Default'
+
+    def _merged_parameters_for_operation(
+        self,
+        path_item_dict: dict[str, Any],
+        operation: dict[str, Any],
+    ) -> list[dict[str, Any]]:
+        path_level_params_raw: Any = path_item_dict.get('parameters', [])
+        operation_params_raw: Any = operation.get('parameters', [])
+
+        path_level_params = (
+            [cast(dict[str, Any], p) for p in path_level_params_raw if isinstance(p, dict)]
+            if isinstance(path_level_params_raw, list)
+            else []
+        )
+        operation_params = (
+            [cast(dict[str, Any], p) for p in operation_params_raw if isinstance(p, dict)]
+            if isinstance(operation_params_raw, list)
+            else []
+        )
+
+        return merge_parameters(
+            cast(list[dict[str, Any]], path_level_params),
+            cast(list[dict[str, Any]], operation_params),
+        )
+
+    def _group_requests_by_tag(self, paths: dict[str, Any]) -> dict[str, list[dict[str, Any]]]:
         endpoint_folders: dict[str, list[dict[str, Any]]] = {}
-        
+        methods = ['get', 'post', 'put', 'delete', 'patch', 'options', 'head']
+
         for path, path_item in paths.items():
-            for method in ['get', 'post', 'put', 'delete', 'patch', 'options', 'head']:
+            for method in methods:
                 if not isinstance(path_item, dict) or method not in path_item:
                     continue
 
@@ -669,50 +700,31 @@ class OpenAPIToPostmanConverter:
                     continue
                 operation: dict[str, Any] = cast(dict[str, Any], operation_raw)
 
-                tags_raw: Any = operation.get('tags', ['Default'])
-                tags: list[str] = [str(t) for t in tags_raw] if isinstance(tags_raw, list) else ['Default']
-                tag: str = tags[0] if tags else 'Default'
-                    
-                if tag not in endpoint_folders:
-                    endpoint_folders[tag] = []
-                    
-                # Merge path-level and operation-level parameters
-                path_level_params_raw: Any = path_item_dict.get('parameters', [])
-                operation_params_raw: Any = operation.get('parameters', [])
-                path_level_params = (
-                    [cast(dict[str, Any], p) for p in path_level_params_raw if isinstance(p, dict)]
-                    if isinstance(path_level_params_raw, list)
-                    else []
-                )
-                operation_params = (
-                    [cast(dict[str, Any], p) for p in operation_params_raw if isinstance(p, dict)]
-                    if isinstance(operation_params_raw, list)
-                    else []
-                )
-                merged_params = merge_parameters(
-                    cast(list[dict[str, Any]], path_level_params),
-                    cast(list[dict[str, Any]], operation_params),
-                )
-
+                tag = self._operation_primary_tag(operation)
+                merged_params = self._merged_parameters_for_operation(path_item_dict, operation)
                 request_item = self._create_postman_request(path, method, operation, merged_params)
-                endpoint_folders[tag].append(request_item)
-        
-        # Add folders to collection
+                endpoint_folders.setdefault(tag, []).append(request_item)
+
+        return endpoint_folders
+
+    def _add_endpoint_folders_to_collection(
+        self,
+        collection: dict[str, Any],
+        endpoint_folders: dict[str, list[dict[str, Any]]],
+    ) -> None:
         for folder_name, requests in endpoint_folders.items():
             collection['item'].append({
                 'name': folder_name,
                 'item': requests
             })
 
-        # Prepend a human-readable generation timestamp (GMT) to the collection description.
-        def _ordinal_suffix(day: int) -> str:
-            if 11 <= (day % 100) <= 13:
-                return 'th'
-            return {1: 'st', 2: 'nd', 3: 'rd'}.get(day % 10, 'th')
-
-        generated_at = datetime.now(timezone.utc)
+    def _prepend_generated_timestamp_to_description(
+        self,
+        collection: dict[str, Any],
+        generated_at: datetime,
+    ) -> None:
         human_timestamp = (
-            f"{generated_at.strftime('%B')} {generated_at.day}{_ordinal_suffix(generated_at.day)}, "
+            f"{generated_at.strftime('%B')} {generated_at.day}{self._ordinal_suffix(generated_at.day)}, "
             f"{generated_at.year}, {generated_at.strftime('%H:%M:%S')} GMT"
         )
         generated_line = f"Collection generated on {human_timestamp}."
@@ -724,18 +736,43 @@ class OpenAPIToPostmanConverter:
         info_obj['x-api-id'] = self.api_id_slug
         info_obj['x-generated-at'] = self.generated_at_iso
         collection['info'] = info_obj
-        
-        # Generate filename with version and timestamp (reusing collection_name for consistency)
+
+    def _write_collection_file(
+        self,
+        collection: dict[str, Any],
+        generated_at: datetime,
+        collection_name: str,
+    ) -> str:
         timestamp = generated_at.strftime('%Y%m%d_%H%M%S')
         filename = f"{sanitize_filename(collection_name)}_{timestamp}_collection.json"
         file_path = self.output_folder / filename
-        
-        # Write collection file
+
         with open(file_path, 'w', encoding='utf-8') as f:
             json.dump(collection, f, indent=2, ensure_ascii=False)
-        
+
         print(f"Generated collection: {file_path}")
         return str(file_path)
+
+    def generate_collection(self) -> str:
+        """
+        Generate Postman collection from OpenAPI specification.
+        
+        Returns:
+            Path to generated collection file
+        """
+        self._require_openapi_loaded()
+
+        paths = self._get_paths_dict()
+        collection_name = self._format_collection_name()
+        collection = self._init_collection(collection_name)
+
+        endpoint_folders = self._group_requests_by_tag(paths)
+        self._add_endpoint_folders_to_collection(collection, endpoint_folders)
+
+        generated_at = datetime.now(timezone.utc)
+        self._prepend_generated_timestamp_to_description(collection, generated_at)
+
+        return self._write_collection_file(collection, generated_at, collection_name)
 
     def generate_environment_files(self) -> list[str]:
         """
