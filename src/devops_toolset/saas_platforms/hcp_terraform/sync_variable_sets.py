@@ -186,41 +186,61 @@ def calculate_changes(
     varsets: Dict[str, dict]
 ) -> Dict[str, Dict[str, List[str]]]:
     """Calculate required changes to variable set associations"""
-    
-    # Dynamically create changes dict for all providers
-    changes = {
-        provider: {"add": [], "remove": []}
-        for provider in VARIABLE_SETS.keys()
+
+    changes = _init_provider_changes()
+
+    configured_workspaces = {
+        workspace_name: workspace_id
+        for workspace_name, workspace_id in workspaces.items()
+        if workspace_name in WORKSPACE_CONFIG
     }
-    
+
     for provider, varset_name in VARIABLE_SETS.items():
-        if varset_name not in varsets:
-            print(f"⚠️  Variable set '{varset_name}' not found!")
+        varset_info = _get_varset_info_or_warn(varsets, varset_name)
+        if varset_info is None:
             continue
-        
-        varset_info = varsets[varset_name]
-        varset_id = varset_info["id"]
-        
-        # If variable set is global, we can't check individual associations
-        # All workspaces already have access
-        if varset_info["global"]:
+
+        if varset_info.get("global"):
             continue
-        
+
+        varset_id = str(varset_info["id"])
         current_associations = api.get_varset_workspaces(varset_id)
-        
-        for workspace_name, workspace_id in workspaces.items():
-            if workspace_name not in WORKSPACE_CONFIG:
-                continue
-            
-            should_have = provider in WORKSPACE_CONFIG[workspace_name]
-            currently_has = workspace_id in current_associations
-            
-            if should_have and not currently_has:
-                changes[provider]["add"].append(workspace_name)
-            elif not should_have and currently_has:
-                changes[provider]["remove"].append(workspace_name)
-    
+        _update_provider_changes(
+            provider,
+            configured_workspaces,
+            current_associations,
+            changes,
+        )
+
     return changes
+
+
+def _init_provider_changes() -> Dict[str, Dict[str, List[str]]]:
+    return {provider: {"add": [], "remove": []} for provider in VARIABLE_SETS.keys()}
+
+
+def _get_varset_info_or_warn(varsets: Dict[str, dict], varset_name: str) -> Optional[dict]:
+    if varset_name not in varsets:
+        print(f"⚠️  Variable set '{varset_name}' not found!")
+        return None
+    return varsets[varset_name]
+
+
+def _update_provider_changes(
+    provider: str,
+    configured_workspaces: Dict[str, str],
+    current_associations: Set[str],
+    changes: Dict[str, Dict[str, List[str]]],
+) -> None:
+    for workspace_name, workspace_id in configured_workspaces.items():
+        required_providers = WORKSPACE_CONFIG.get(workspace_name, set())
+        should_have = provider in required_providers
+        currently_has = workspace_id in current_associations
+
+        if should_have and not currently_has:
+            changes[provider]["add"].append(workspace_name)
+        elif not should_have and currently_has:
+            changes[provider]["remove"].append(workspace_name)
 
 
 def apply_changes(
@@ -231,43 +251,58 @@ def apply_changes(
     dry_run: bool = False
 ):
     """Apply the calculated changes"""
-    
-    total_changes = sum(
-        len(changes[p]["add"]) + len(changes[p]["remove"])
-        for p in changes
-    )
-    
+
+    total_changes = _count_total_changes(changes)
     if total_changes == 0:
         print("✅ No changes needed - all associations are correct!")
         return
-    
-    print(f"\n{'DRY RUN - ' if dry_run else ''}Applying {total_changes} changes:\n")
-    
+
+    prefix = "DRY RUN - " if dry_run else ""
+    print(f"\n{prefix}Applying {total_changes} changes:\n")
+
     for provider, varset_name in VARIABLE_SETS.items():
-        if varset_name not in varsets:
+        varset_info = varsets.get(varset_name)
+        if not varset_info:
             continue
-        
-        varset_info = varsets[varset_name]
-        varset_id = varset_info["id"]
-        
-        # Add associations
-        for workspace_name in changes[provider]["add"]:
-            workspace_id = workspaces[workspace_name]
-            print(f"  ➕ Adding {varset_name} to {workspace_name}")
-            if not dry_run:
-                api.associate_workspace(varset_id, workspace_id)
-        
-        # Remove associations
-        for workspace_name in changes[provider]["remove"]:
-            workspace_id = workspaces[workspace_name]
-            print(f"  ➖ Removing {varset_name} from {workspace_name}")
-            if not dry_run:
-                api.disassociate_workspace(varset_id, workspace_id)
-    
+
+        _apply_provider_changes(api, workspaces, provider, varset_name, varset_info, changes, dry_run)
+
+    _print_apply_summary(dry_run)
+
+
+def _count_total_changes(changes: Dict[str, Dict[str, List[str]]]) -> int:
+    return sum(len(entry["add"]) + len(entry["remove"]) for entry in changes.values())
+
+
+def _apply_provider_changes(
+    api: TerraformCloudAPI,
+    workspaces: Dict[str, str],
+    provider: str,
+    varset_name: str,
+    varset_info: dict,
+    changes: Dict[str, Dict[str, List[str]]],
+    dry_run: bool,
+) -> None:
+    varset_id = varset_info["id"]
+
+    for workspace_name in changes[provider]["add"]:
+        workspace_id = workspaces[workspace_name]
+        print(f"  ➕ Adding {varset_name} to {workspace_name}")
+        if not dry_run:
+            api.associate_workspace(varset_id, workspace_id)
+
+    for workspace_name in changes[provider]["remove"]:
+        workspace_id = workspaces[workspace_name]
+        print(f"  ➖ Removing {varset_name} from {workspace_name}")
+        if not dry_run:
+            api.disassociate_workspace(varset_id, workspace_id)
+
+
+def _print_apply_summary(dry_run: bool) -> None:
     if dry_run:
         print("\n⚠️  This was a dry run. Use without --dry-run to apply changes.")
-    else:
-        print("\n✅ All changes applied successfully!")
+        return
+    print("\n✅ All changes applied successfully!")
 
 
 def verify_configuration(
@@ -277,40 +312,13 @@ def verify_configuration(
 ):
     """Verify current configuration and report status"""
 
-    def _association_status(should_have: bool, currently_has: bool) -> Optional[str]:
-        if not (should_have or currently_has):
-            return None
-        if should_have:
-            return "✅" if currently_has else "❌ MISSING"
-        return "⚠️  EXTRA"
-    
     print(f"\n📋 Configuration Report for Organization: {ORGANIZATION}\n")
     print("=" * 80)
-    
-    # Check for global variable sets
-    global_varsets = [name for name, info in varsets.items() if info["global"]]
-    if global_varsets:
-        print("\n🌍 Global Variable Sets (applied to ALL workspaces):")
-        for vs in sorted(global_varsets):
-            print(f"  - {vs}")
-        print("\n⚠️  Global variable sets violate the principle of least privilege!")
-        print("   Consider using --convert-to-workspace-specific to change this.")
-    
-    # Check for missing workspaces
-    missing_workspaces = set(WORKSPACE_CONFIG.keys()) - set(workspaces.keys())
-    if missing_workspaces:
-        print("\n⚠️  Missing Workspaces (not found in HCP Terraform):")
-        for ws in sorted(missing_workspaces):
-            print(f"  - {ws}")
-    
-    # Check for missing variable sets
-    missing_varsets = set(VARIABLE_SETS.values()) - set(varsets.keys())
-    if missing_varsets:
-        print("\n⚠️  Missing Variable Sets (not found in HCP Terraform):")
-        for vs in sorted(missing_varsets):
-            print(f"  - {vs}")
-    
-    # Show current associations
+
+    _print_global_varsets(varsets)
+    _print_missing_workspaces(workspaces)
+    _print_missing_varsets(varsets)
+
     print("\n📊 Current Variable Set Associations:\n")
 
     configured_workspaces = {
@@ -321,31 +329,87 @@ def verify_configuration(
     configured_workspace_names = sorted(configured_workspaces.keys())
 
     for provider, varset_name in VARIABLE_SETS.items():
-        if varset_name not in varsets:
+        varset_info = varsets.get(varset_name)
+        if not varset_info:
             continue
 
-        print(f"\n{varset_name}:")
-        print("-" * 40)
+        _print_provider_associations(
+            api,
+            provider,
+            varset_name,
+            varset_info,
+            configured_workspaces,
+            configured_workspace_names,
+        )
 
-        varset_info = varsets[varset_name]
-        varset_id = varset_info["id"]
-
-        if varset_info["global"]:
-            print("  🌍 GLOBAL - All workspaces have access")
-            continue
-
-        current_associations = api.get_varset_workspaces(varset_id)
-
-        for workspace_name in configured_workspace_names:
-            workspace_id = configured_workspaces[workspace_name]
-            should_have = provider in WORKSPACE_CONFIG[workspace_name]
-            currently_has = workspace_id in current_associations
-
-            status = _association_status(should_have, currently_has)
-            if status is not None:
-                print(f"  {status} {workspace_name}")
-    
     print("\n" + "=" * 80)
+
+
+def _print_global_varsets(varsets: Dict[str, dict]) -> None:
+    global_varsets = [name for name, info in varsets.items() if info.get("global")]
+    if not global_varsets:
+        return
+
+    print("\n🌍 Global Variable Sets (applied to ALL workspaces):")
+    for varset_name in sorted(global_varsets):
+        print(f"  - {varset_name}")
+    print("\n⚠️  Global variable sets violate the principle of least privilege!")
+    print("   Consider using --convert-to-workspace-specific to change this.")
+
+
+def _print_missing_workspaces(workspaces: Dict[str, str]) -> None:
+    missing_workspaces = set(WORKSPACE_CONFIG.keys()) - set(workspaces.keys())
+    if not missing_workspaces:
+        return
+
+    print("\n⚠️  Missing Workspaces (not found in HCP Terraform):")
+    for workspace_name in sorted(missing_workspaces):
+        print(f"  - {workspace_name}")
+
+
+def _print_missing_varsets(varsets: Dict[str, dict]) -> None:
+    missing_varsets = set(VARIABLE_SETS.values()) - set(varsets.keys())
+    if not missing_varsets:
+        return
+
+    print("\n⚠️  Missing Variable Sets (not found in HCP Terraform):")
+    for varset_name in sorted(missing_varsets):
+        print(f"  - {varset_name}")
+
+
+def _print_provider_associations(
+    api: TerraformCloudAPI,
+    provider: str,
+    varset_name: str,
+    varset_info: dict,
+    configured_workspaces: Dict[str, str],
+    configured_workspace_names: List[str],
+) -> None:
+    print(f"\n{varset_name}:")
+    print("-" * 40)
+
+    if varset_info.get("global"):
+        print("  🌍 GLOBAL - All workspaces have access")
+        return
+
+    varset_id = varset_info["id"]
+    current_associations = api.get_varset_workspaces(varset_id)
+
+    for workspace_name in configured_workspace_names:
+        workspace_id = configured_workspaces[workspace_name]
+        should_have = provider in WORKSPACE_CONFIG[workspace_name]
+        currently_has = workspace_id in current_associations
+        status = _association_status(should_have, currently_has)
+        if status is not None:
+            print(f"  {status} {workspace_name}")
+
+
+def _association_status(should_have: bool, currently_has: bool) -> Optional[str]:
+    if not (should_have or currently_has):
+        return None
+    if should_have:
+        return "✅" if currently_has else "❌ MISSING"
+    return "⚠️  EXTRA"
 
 
 def _parse_args() -> argparse.Namespace:
@@ -400,46 +464,73 @@ def _convert_global_varsets_to_workspace_specific(
     varsets: Dict[str, dict],
     dry_run: bool,
 ) -> None:
-    global_varsets = [
-        (name, info) for name, info in varsets.items()
-        if info.get("global") and name in VARIABLE_SETS.values()
-    ]
-
+    global_varsets = _global_varsets_to_convert(varsets)
     if not global_varsets:
         print("\n✅ No global variable sets to convert!")
         return
 
+    _print_convert_header(global_varsets, dry_run)
+
+    for varset_name, varset_info in global_varsets:
+        _convert_single_varset(api, workspaces, varset_name, varset_info, dry_run)
+
+    _print_convert_summary(dry_run)
+
+
+def _global_varsets_to_convert(varsets: Dict[str, dict]) -> List[tuple[str, dict]]:
+    return [
+        (name, info)
+        for name, info in varsets.items()
+        if info.get("global") and name in VARIABLE_SETS.values()
+    ]
+
+
+def _print_convert_header(global_varsets: List[tuple[str, dict]], dry_run: bool) -> None:
     prefix = "DRY RUN - " if dry_run else ""
     print(
         f"\n{prefix}Converting {len(global_varsets)} variable sets from global to workspace-specific:\n"
     )
 
-    for varset_name, varset_info in global_varsets:
-        print(f"  🔄 Converting '{varset_name}' to workspace-specific")
-        if not dry_run:
-            api.set_global_scope(varset_info["id"], False)
 
-        provider = next(
-            (p for p, vs in VARIABLE_SETS.items() if vs == varset_name),
-            None,
-        )
-        if provider is None:
+def _provider_for_varset_name(varset_name: str) -> Optional[str]:
+    for provider, mapped_name in VARIABLE_SETS.items():
+        if mapped_name == varset_name:
+            return provider
+    return None
+
+
+def _convert_single_varset(
+    api: TerraformCloudAPI,
+    workspaces: Dict[str, str],
+    varset_name: str,
+    varset_info: dict,
+    dry_run: bool,
+) -> None:
+    print(f"  🔄 Converting '{varset_name}' to workspace-specific")
+    varset_id = varset_info["id"]
+    if not dry_run:
+        api.set_global_scope(varset_id, False)
+
+    provider = _provider_for_varset_name(varset_name)
+    if provider is None:
+        return
+
+    for workspace_name, workspace_id in workspaces.items():
+        required_providers = WORKSPACE_CONFIG.get(workspace_name)
+        if not required_providers or provider not in required_providers:
             continue
 
-        for workspace_name, workspace_id in workspaces.items():
-            required_providers = WORKSPACE_CONFIG.get(workspace_name)
-            if not required_providers or provider not in required_providers:
-                continue
+        print(f"     ➕ Adding {workspace_name}")
+        if not dry_run:
+            api.associate_workspace(varset_id, workspace_id)
 
-            print(f"     ➕ Adding {workspace_name}")
-            if not dry_run:
-                api.associate_workspace(varset_info["id"], workspace_id)
 
+def _print_convert_summary(dry_run: bool) -> None:
     if dry_run:
         print("\n⚠️  This was a dry run. Use without --dry-run to apply changes.")
-    else:
-        print("\n✅ Conversion completed successfully!")
-        print("   Run --verify-only to see the new configuration.")
+        return
+    print("\n✅ Conversion completed successfully!")
+    print("   Run --verify-only to see the new configuration.")
 
 
 def main():
