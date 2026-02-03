@@ -101,6 +101,126 @@ class HCPTerraformClient:
         return True
 
 
+def _load_token_from_file(token_file: str) -> str:
+    with open(token_file, "r", encoding="utf-8") as f:
+        return f.read().strip()
+
+
+def _get_token(args: argparse.Namespace, parser: argparse.ArgumentParser) -> str:
+    if args.token_file:
+        try:
+            return _load_token_from_file(args.token_file)
+        except FileNotFoundError:
+            print(f"Error: Token file '{args.token_file}' not found")
+            raise SystemExit(1)
+    if args.token:
+        return args.token
+
+    print("Error: Either --token or --token-file is required")
+    parser.print_help()
+    raise SystemExit(1)
+
+
+def _get_workspaces_to_process(client: HCPTerraformClient, args: argparse.Namespace) -> List[Dict]:
+    if args.workspace:
+        workspace_data = client.get_workspace(args.workspace)
+        if not workspace_data:
+            print(f"Error: Workspace '{args.workspace}' not found")
+            raise SystemExit(1)
+        return [workspace_data]
+
+    print("Fetching workspaces...")
+    workspaces = client.list_workspaces()
+    print(f"Found {len(workspaces)} workspaces")
+    print()
+    return workspaces
+
+
+def _init_results() -> Dict[str, List]:
+    return {
+        "enabled": [],
+        "already_enabled": [],
+        "no_vcs": [],
+        "errors": [],
+    }
+
+
+def _handle_workspace(
+    *,
+    client: HCPTerraformClient,
+    workspace: Dict,
+    verify_only: bool,
+    dry_run: bool,
+    results: Dict[str, List],
+) -> None:
+    name = workspace["attributes"]["name"]
+    vcs_repo = workspace["attributes"].get("vcs-repo")
+
+    if not vcs_repo:
+        results["no_vcs"].append(name)
+        print(f"⚠️  {name}: No VCS connection (skipped)")
+        return
+
+    submodules_enabled = bool(vcs_repo.get("ingress-submodules", False))
+    if submodules_enabled:
+        results["already_enabled"].append(name)
+        print(f"✅ {name}: Submodules already enabled")
+        return
+
+    if verify_only:
+        results["enabled"].append(name)
+        print(f"❌ {name}: Submodules NOT enabled")
+        return
+
+    if dry_run:
+        results["enabled"].append(name)
+        print(f"🔄 {name}: Would enable submodules (dry run)")
+        return
+
+    try:
+        client.enable_submodules(name)
+        results["enabled"].append(name)
+        print(f"✅ {name}: Submodules enabled")
+    except Exception as e:
+        results["errors"].append({"workspace": name, "error": str(e)})
+        print(f"❌ {name}: Error - {e}")
+
+
+def _print_summary(results: Dict[str, List], *, dry_run: bool, verify_only: bool) -> None:
+    print()
+    print("=" * 60)
+    print("Summary")
+    print("=" * 60)
+    print(f"Already enabled: {len(results['already_enabled'])}")
+    enabled_label = "Would enable" if dry_run or verify_only else "Enabled"
+    print(f"{enabled_label}: {len(results['enabled'])}")
+    print(f"No VCS connection: {len(results['no_vcs'])}")
+    print(f"Errors: {len(results['errors'])}")
+
+    if results["enabled"] and not verify_only:
+        print()
+        print(f"{enabled_label} submodules for:")
+        for name in results["enabled"]:
+            print(f"  • {name}")
+
+    if results["errors"]:
+        print()
+        print("Errors occurred:")
+        for error in results["errors"]:
+            print(f"  • {error['workspace']}: {error['error']}")
+
+    if dry_run:
+        print()
+        print("This was a DRY RUN. No changes were made.")
+        print("Run without --dry-run to apply changes.")
+    elif verify_only:
+        print()
+        print("Verification complete. No changes were made.")
+    else:
+        print()
+        print("✅ Configuration complete!")
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Enable Git submodules for HCP Terraform workspaces",
@@ -151,20 +271,7 @@ Examples:
     
     args = parser.parse_args()
     
-    # Get token
-    if args.token_file:
-        try:
-            with open(args.token_file, 'r') as f:
-                token = f.read().strip()
-        except FileNotFoundError:
-            print(f"Error: Token file '{args.token_file}' not found")
-            sys.exit(1)
-    elif args.token:
-        token = args.token
-    else:
-        print("Error: Either --token or --token-file is required")
-        parser.print_help()
-        sys.exit(1)
+    token = _get_token(args, parser)
     
     # Initialize client
     client = HCPTerraformClient(token, args.organization)
@@ -177,103 +284,34 @@ Examples:
     print()
     
     try:
-        # Get workspaces to process
-        if args.workspace:
-            workspace_data = client.get_workspace(args.workspace)
-            if not workspace_data:
-                print(f"Error: Workspace '{args.workspace}' not found")
-                sys.exit(1)
-            workspaces = [workspace_data]
-        else:
-            print("Fetching workspaces...")
-            workspaces = client.list_workspaces()
-            print(f"Found {len(workspaces)} workspaces")
-            print()
+        workspaces = _get_workspaces_to_process(client, args)
         
         # Process workspaces
-        results = {
-            "enabled": [],
-            "already_enabled": [],
-            "no_vcs": [],
-            "errors": []
-        }
+        results = _init_results()
         
         for workspace in workspaces:
-            name = workspace["attributes"]["name"]
-            vcs_repo = workspace["attributes"].get("vcs-repo")
-            
-            # Skip workspaces without VCS connection
-            if not vcs_repo:
-                results["no_vcs"].append(name)
-                print(f"⚠️  {name}: No VCS connection (skipped)")
-                continue
-            
-            submodules_enabled = vcs_repo.get("ingress-submodules", False)
-            
-            if submodules_enabled:
-                results["already_enabled"].append(name)
-                print(f"✅ {name}: Submodules already enabled")
-            else:
-                if args.verify_only:
-                    results["enabled"].append(name)
-                    print(f"❌ {name}: Submodules NOT enabled")
-                elif args.dry_run:
-                    results["enabled"].append(name)
-                    print(f"🔄 {name}: Would enable submodules (dry run)")
-                else:
-                    try:
-                        client.enable_submodules(name)
-                        results["enabled"].append(name)
-                        print(f"✅ {name}: Submodules enabled")
-                    except Exception as e:
-                        results["errors"].append({"workspace": name, "error": str(e)})
-                        print(f"❌ {name}: Error - {e}")
-        
-        # Summary
-        print()
-        print("=" * 60)
-        print("Summary")
-        print("=" * 60)
-        print(f"Already enabled: {len(results['already_enabled'])}")
-        print(f"{'Would enable' if args.dry_run or args.verify_only else 'Enabled'}: {len(results['enabled'])}")
-        print(f"No VCS connection: {len(results['no_vcs'])}")
-        print(f"Errors: {len(results['errors'])}")
-        
-        if results["enabled"] and not args.verify_only:
-            print()
-            print(f"{'Would enable' if args.dry_run else 'Enabled'} submodules for:")
-            for name in results["enabled"]:
-                print(f"  • {name}")
-        
-        if results["errors"]:
-            print()
-            print("Errors occurred:")
-            for error in results["errors"]:
-                print(f"  • {error['workspace']}: {error['error']}")
-        
-        if args.dry_run:
-            print()
-            print("This was a DRY RUN. No changes were made.")
-            print("Run without --dry-run to apply changes.")
-        elif args.verify_only:
-            print()
-            print("Verification complete. No changes were made.")
-        else:
-            print()
-            print("✅ Configuration complete!")
+            _handle_workspace(
+                client=client,
+                workspace=workspace,
+                verify_only=args.verify_only,
+                dry_run=args.dry_run,
+                results=results,
+            )
+
+        _print_summary(results, dry_run=args.dry_run, verify_only=args.verify_only)
         
         # Exit code based on results
         if results["errors"]:
-            sys.exit(1)
+            raise SystemExit(1)
         
     except requests.exceptions.HTTPError as e:
         print(f"HTTP Error: {e}")
         if e.response.status_code == 401:
             print("Authentication failed. Check your API token.")
-        sys.exit(1)
+        raise SystemExit(1)
     except Exception as e:
         print(f"Error: {e}")
-        sys.exit(1)
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":
