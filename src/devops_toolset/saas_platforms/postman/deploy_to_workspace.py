@@ -27,7 +27,7 @@ import json
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Optional, cast
+from typing import Any, Callable, Optional, cast
 
 import requests
 
@@ -211,6 +211,59 @@ def _request_json(
     return cast(dict[str, Any], data)
 
 
+def _get_stripped_uid(obj: dict[str, Any]) -> str:
+    return str(obj.get("uid", "")).strip() or str(obj.get("id", "")).strip()
+
+
+def _add_assets_from_workspace(
+    items_raw: Any,
+    *,
+    by_name: dict[str, str],
+    by_api_id: dict[str, str],
+    fetch_api_id_for_uid: Callable[[str], str | None],
+) -> None:
+    if not isinstance(items_raw, list):
+        return
+
+    for item_raw in cast(list[Any], items_raw):
+        if not isinstance(item_raw, dict):
+            continue
+        item = cast(dict[str, Any], item_raw)
+        name = str(item.get("name", "")).strip()
+        uid = _get_stripped_uid(item)
+        if not name or not uid:
+            continue
+
+        by_name[name] = uid
+        api_id = fetch_api_id_for_uid(uid)
+        if api_id:
+            by_api_id[api_id] = uid
+
+
+def _try_fetch_collection_api_id(base_url: str, api_key: str, uid: str) -> str | None:
+    try:
+        coll_data = _request_json("GET", base_url, f"/collections/{uid}", api_key)
+        coll_obj_raw: Any = coll_data.get("collection", {})
+        coll_obj = cast(dict[str, Any], coll_obj_raw) if isinstance(coll_obj_raw, dict) else {}
+        info_raw: Any = coll_obj.get("info", {})
+        info = cast(dict[str, Any], info_raw) if isinstance(info_raw, dict) else {}
+        api_id = str(info.get("x-api-id", "")).strip()
+        return api_id or None
+    except Exception:
+        return None
+
+
+def _try_fetch_environment_api_id(base_url: str, api_key: str, uid: str) -> str | None:
+    try:
+        env_data = _request_json("GET", base_url, f"/environments/{uid}", api_key)
+        env_obj_raw: Any = env_data.get("environment", {})
+        env_obj = cast(dict[str, Any], env_obj_raw) if isinstance(env_obj_raw, dict) else {}
+        api_id = str(env_obj.get("x-api-id", "")).strip()
+        return api_id or None
+    except Exception:
+        return None
+
+
 def get_workspace_assets(base_url: str, api_key: str, workspace_id: str) -> PostmanWorkspaceAssets:
     # Workspaces API returns collection/env identifiers that are in that workspace.
     data = _request_json("GET", base_url, f"/workspaces/{workspace_id}", api_key)
@@ -222,53 +275,19 @@ def get_workspace_assets(base_url: str, api_key: str, workspace_id: str) -> Post
     envs_by_name: dict[str, str] = {}
     envs_by_api_id: dict[str, str] = {}
 
-    collections_raw: Any = workspace.get("collections", [])
-    if isinstance(collections_raw, list):
-        collections_list = cast(list[Any], collections_raw)
-        for c_raw in collections_list:
-            if not isinstance(c_raw, dict):
-                continue
-            c = cast(dict[str, Any], c_raw)
-            name = str(c.get("name", "")).strip()
-            uid = str(c.get("uid", "")).strip() or str(c.get("id", "")).strip()
-            if name and uid:
-                collections_by_name[name] = uid
-                # Fetch full collection to get x-api-id
-                try:
-                    coll_data = _request_json("GET", base_url, f"/collections/{uid}", api_key)
-                    coll_obj_raw: Any = coll_data.get("collection", {})
-                    coll_obj = cast(dict[str, Any], coll_obj_raw) if isinstance(coll_obj_raw, dict) else {}
-                    info_raw: Any = coll_obj.get("info", {})
-                    info = cast(dict[str, Any], info_raw) if isinstance(info_raw, dict) else {}
-                    api_id = str(info.get("x-api-id", "")).strip()
-                    if api_id:
-                        collections_by_api_id[api_id] = uid
-                except Exception:
-                    # Silently ignore errors fetching individual collections
-                    pass
+    _add_assets_from_workspace(
+        workspace.get("collections", []),
+        by_name=collections_by_name,
+        by_api_id=collections_by_api_id,
+        fetch_api_id_for_uid=lambda uid: _try_fetch_collection_api_id(base_url, api_key, uid),
+    )
 
-    envs_raw: Any = workspace.get("environments", [])
-    if isinstance(envs_raw, list):
-        envs_list = cast(list[Any], envs_raw)
-        for e_raw in envs_list:
-            if not isinstance(e_raw, dict):
-                continue
-            e = cast(dict[str, Any], e_raw)
-            name = str(e.get("name", "")).strip()
-            uid = str(e.get("uid", "")).strip() or str(e.get("id", "")).strip()
-            if name and uid:
-                envs_by_name[name] = uid
-                # Fetch full environment to get x-api-id
-                try:
-                    env_data = _request_json("GET", base_url, f"/environments/{uid}", api_key)
-                    env_obj_raw: Any = env_data.get("environment", {})
-                    env_obj = cast(dict[str, Any], env_obj_raw) if isinstance(env_obj_raw, dict) else {}
-                    api_id = str(env_obj.get("x-api-id", "")).strip()
-                    if api_id:
-                        envs_by_api_id[api_id] = uid
-                except Exception:
-                    # Silently ignore errors fetching individual environments
-                    pass
+    _add_assets_from_workspace(
+        workspace.get("environments", []),
+        by_name=envs_by_name,
+        by_api_id=envs_by_api_id,
+        fetch_api_id_for_uid=lambda uid: _try_fetch_environment_api_id(base_url, api_key, uid),
+    )
 
     return PostmanWorkspaceAssets(
         collections_by_name=collections_by_name,
