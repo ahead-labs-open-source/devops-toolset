@@ -84,124 +84,171 @@ class TerraformCloudAPI:
 
 def check_workspaces(api: TerraformCloudAPI, workspace_names: List[str], verbose: bool = False):
     """Check status of multiple workspaces"""
-    
+
     print(f"🔍 Checking {len(workspace_names)} workspace(s)...\n")
-    
+
     for workspace_name in workspace_names:
-        print(f"📊 {workspace_name}")
-        print("=" * (len(workspace_name) + 4))
-        
+        _print_workspace_header(workspace_name)
+
         workspace = api.get_workspace(workspace_name)
         if not workspace:
-            print("   ❌ Workspace not found")
-            print()
+            _print_workspace_not_found()
             continue
-        
-        # Basic workspace info
+
         attrs = workspace["attributes"]
-        print(f"   Status: {'🔒 Locked' if attrs['locked'] else '🔓 Unlocked'}")
-        print(f"   Terraform: {attrs['terraform-version']}")
-        print(f"   Working Dir: {attrs['working-directory']}")
-        
-        # VCS info
-        vcs_repo = attrs.get("vcs-repo")
-        if vcs_repo:
-            print(f"   VCS: {vcs_repo['identifier']} (branch: {vcs_repo['branch']})")
-            print(f"   Submodules: {'✅ Yes' if vcs_repo.get('ingress-submodules', False) else '❌ No'}")
-        else:
-            print("   VCS: ❌ Not connected")
-        
-        # Latest run info
-        current_run = workspace["relationships"].get("current-run", {}).get("data")
-        if current_run:
-            run_id = current_run["id"]
-            run_info = api.get_run_status(run_id)
-            run_attrs = run_info["attributes"]
-            
-            status = run_attrs["status"]
-            created_at = run_attrs["created-at"]
-            message = run_attrs.get("message", "No message")
-            
-            status_icon = {
-                "planned": "📋",
-                "planning": "⏳",
-                "applied": "✅",
-                "applying": "⚙️",
-                "errored": "❌",
-                "canceled": "⏹️",
-                "pending": "⏸️"
-            }.get(status, "❓")
-            
-            print(f"   Latest Run: {status_icon} {status} ({run_id})")
-            print(f"   Created: {created_at}")
-            print(f"   Message: {message}")
-            
-            if verbose and status == "errored":
-                # Get plan details for error
-                plan_rel = run_info["relationships"].get("plan", {}).get("data")
-                if plan_rel:
-                    plan_id = plan_rel["id"]
-                    print(f"   \n   📝 Error logs:")
-                    logs = api.get_plan_logs(plan_id)
-                    # Show last few lines of logs
-                    log_lines = logs.split('\n')[-10:]
-                    for line in log_lines:
-                        if line.strip():
-                            print(f"      {line}")
-        else:
-            print("   Latest Run: 📋 No runs")
-        
+        _print_basic_workspace_info(attrs)
+        _print_vcs_info(attrs)
+        _print_latest_run_info(api, workspace, verbose)
         print()
+
+
+def _print_workspace_header(workspace_name: str) -> None:
+    print(f"📊 {workspace_name}")
+    print("=" * (len(workspace_name) + 4))
+
+
+def _print_workspace_not_found() -> None:
+    print("   ❌ Workspace not found")
+    print()
+
+
+def _print_basic_workspace_info(attrs: Dict) -> None:
+    print(f"   Status: {'🔒 Locked' if attrs['locked'] else '🔓 Unlocked'}")
+    print(f"   Terraform: {attrs['terraform-version']}")
+    print(f"   Working Dir: {attrs['working-directory']}")
+
+
+def _print_vcs_info(attrs: Dict) -> None:
+    vcs_repo = attrs.get("vcs-repo")
+    if vcs_repo:
+        print(f"   VCS: {vcs_repo['identifier']} (branch: {vcs_repo['branch']})")
+        print(
+            f"   Submodules: {'✅ Yes' if vcs_repo.get('ingress-submodules', False) else '❌ No'}"
+        )
+        return
+
+    print("   VCS: ❌ Not connected")
+
+
+def _print_latest_run_info(api: TerraformCloudAPI, workspace: dict, verbose: bool) -> None:
+    current_run = workspace["relationships"].get("current-run", {}).get("data")
+    if not current_run:
+        print("   Latest Run: 📋 No runs")
+        return
+
+    run_id = current_run["id"]
+    run_info = api.get_run_status(run_id)
+    run_attrs = run_info["attributes"]
+
+    status = run_attrs["status"]
+    created_at = run_attrs["created-at"]
+    message = run_attrs.get("message", "No message")
+
+    print(f"   Latest Run: {_run_status_icon(status)} {status} ({run_id})")
+    print(f"   Created: {created_at}")
+    print(f"   Message: {message}")
+
+    if verbose and status == "errored":
+        _print_errored_run_logs(api, run_info)
+
+
+def _run_status_icon(status: str) -> str:
+    return {
+        "planned": "📋",
+        "planning": "⏳",
+        "applied": "✅",
+        "applying": "⚙️",
+        "errored": "❌",
+        "canceled": "⏹️",
+        "pending": "⏸️",
+    }.get(status, "❓")
+
+
+def _print_errored_run_logs(api: TerraformCloudAPI, run_info: dict) -> None:
+    plan_rel = run_info["relationships"].get("plan", {}).get("data")
+    if not plan_rel:
+        return
+
+    plan_id = plan_rel["id"]
+    print("   \n   📝 Error logs:")
+    logs = api.get_plan_logs(plan_id)
+
+    log_lines = logs.split("\n")[-10:]
+    for line in log_lines:
+        if line.strip():
+            print(f"      {line}")
 
 
 def trigger_test_runs(api: TerraformCloudAPI, workspace_names: List[str]):
     """Trigger test runs in workspaces"""
-    
+
     print(f"🚀 Triggering test runs in {len(workspace_names)} workspace(s)...\n")
-    
-    run_ids = {}
-    
+    run_ids = _trigger_runs_for_workspaces(api, workspace_names)
+
+    if not run_ids:
+        return
+
+    print("\n⏳ Waiting for runs to complete...")
+    _wait_for_runs_to_complete(api, run_ids)
+    print("\n🎉 All runs completed!")
+
+
+def _trigger_runs_for_workspaces(
+    api: TerraformCloudAPI, workspace_names: List[str]
+) -> Dict[str, str]:
+    run_ids: Dict[str, str] = {}
+
     for workspace_name in workspace_names:
         workspace = api.get_workspace(workspace_name)
         if not workspace:
             print(f"   ❌ {workspace_name}: Workspace not found")
             continue
-        
+
         workspace_id = workspace["id"]
         try:
-            run_id = api.trigger_run(workspace_id, f"Test run for workspace validation - {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+            run_id = api.trigger_run(
+                workspace_id,
+                "Test run for workspace validation - "
+                + datetime.now().strftime("%Y-%m-%d %H:%M"),
+            )
             run_ids[workspace_name] = run_id
             print(f"   ✅ {workspace_name}: Run started ({run_id})")
         except Exception as e:
             print(f"   ❌ {workspace_name}: Failed to start run - {e}")
-    
-    if run_ids:
-        print(f"\n⏳ Waiting for runs to complete...")
-        
-        # Wait for completion
-        while run_ids:
-            time.sleep(10)
-            completed = []
-            
-            for workspace_name, run_id in run_ids.items():
-                run_info = api.get_run_status(run_id)
-                status = run_info["attributes"]["status"]
-                
-                if status in ["applied", "errored", "canceled", "discarded"]:
-                    status_icon = {
-                        "applied": "✅",
-                        "errored": "❌",
-                        "canceled": "⏹️",
-                        "discarded": "🗑️"
-                    }.get(status, "❓")
-                    
-                    print(f"   {status_icon} {workspace_name}: {status}")
-                    completed.append(workspace_name)
-            
-            for workspace_name in completed:
-                del run_ids[workspace_name]
-        
-        print("\n🎉 All runs completed!")
+
+    return run_ids
+
+
+def _wait_for_runs_to_complete(api: TerraformCloudAPI, run_ids: Dict[str, str]) -> None:
+    while run_ids:
+        time.sleep(10)
+        completed = []
+
+        for workspace_name, run_id in run_ids.items():
+            run_info = api.get_run_status(run_id)
+            status = run_info["attributes"]["status"]
+
+            if not _is_terminal_run_status(status):
+                continue
+
+            print(f"   {_terminal_status_icon(status)} {workspace_name}: {status}")
+            completed.append(workspace_name)
+
+        for workspace_name in completed:
+            del run_ids[workspace_name]
+
+
+def _is_terminal_run_status(status: str) -> bool:
+    return status in {"applied", "errored", "canceled", "discarded"}
+
+
+def _terminal_status_icon(status: str) -> str:
+    return {
+        "applied": "✅",
+        "errored": "❌",
+        "canceled": "⏹️",
+        "discarded": "🗑️",
+    }.get(status, "❓")
 
 
 def main():
