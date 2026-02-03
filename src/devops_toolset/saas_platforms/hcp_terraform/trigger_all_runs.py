@@ -140,7 +140,7 @@ def get_run_status(token, run_id):
     return None
 
 
-def main():
+def _parse_args():
     parser = argparse.ArgumentParser(
         description="Trigger runs in all HCP Terraform workspaces"
     )
@@ -174,116 +174,168 @@ def main():
         type=str,
         help="Exclude workspaces matching pattern"
     )
-    
-    args = parser.parse_args()
-    
+    return parser.parse_args()
+
+
+def _print_header():
     print("=" * 60)
     print("🚀 HCP Terraform - Trigger All Runs")
     print("=" * 60)
-    
-    token = get_token()
-    workspaces = get_all_workspaces(token)
-    
-    # Filter workspaces
-    if args.filter:
-        workspaces = [w for w in workspaces if args.filter.lower() in w["attributes"]["name"].lower()]
-    
-    if args.exclude:
-        workspaces = [w for w in workspaces if args.exclude.lower() not in w["attributes"]["name"].lower()]
-    
-    # Sort by name
-    workspaces = sorted(workspaces, key=lambda w: w["attributes"]["name"])
-    
+
+
+def _filter_and_sort_workspaces(workspaces, include_pattern=None, exclude_pattern=None):
+    if include_pattern:
+        include_lower = include_pattern.lower()
+        workspaces = [
+            w for w in workspaces
+            if include_lower in w["attributes"]["name"].lower()
+        ]
+
+    if exclude_pattern:
+        exclude_lower = exclude_pattern.lower()
+        workspaces = [
+            w for w in workspaces
+            if exclude_lower not in w["attributes"]["name"].lower()
+        ]
+
+    return sorted(workspaces, key=lambda w: w["attributes"]["name"])
+
+
+def _print_workspace_list(workspaces):
     print(f"\n📋 Found {len(workspaces)} workspaces")
     print("-" * 60)
-    
+
     for ws in workspaces:
         name = ws["attributes"]["name"]
         vcs = "VCS" if ws["attributes"].get("vcs-repo") else "CLI"
         print(f"   • {name} ({vcs})")
-    
+
     print("-" * 60)
-    
-    mode = "🔴 AUTO-APPLY" if args.apply else "🟡 PLAN ONLY"
+
+
+def _print_mode(auto_apply):
+    mode = "🔴 AUTO-APPLY" if auto_apply else "🟡 PLAN ONLY"
     print(f"\n⚙️  Mode: {mode}")
-    
-    if args.dry_run:
-        print("\n🔍 DRY RUN - No runs will be triggered")
-        return
-    
-    # Confirmation
-    if not args.confirm:
-        print(f"\n⚠️  This will trigger {len(workspaces)} runs.")
-        response = input("Continue? [y/N]: ")
-        if response.lower() != "y":
-            print("❌ Aborted")
-            return
-    
-    # Trigger runs
+
+
+def _confirm_or_abort(run_count, skip_confirmation):
+    if skip_confirmation:
+        return True
+
+    print(f"\n⚠️  This will trigger {run_count} runs.")
+    response = input("Continue? [y/N]: ")
+    if response.lower() != "y":
+        print("❌ Aborted")
+        return False
+    return True
+
+
+def _trigger_runs(token, workspaces, auto_apply):
     print("\n🚀 Triggering runs...")
     print("-" * 60)
-    
+
     triggered_runs = []
-    
+
     for ws in workspaces:
         ws_id = ws["id"]
         ws_name = ws["attributes"]["name"]
-        
-        run_id = trigger_run(token, ws_id, ws_name, auto_apply=args.apply)
-        
+
+        run_id = trigger_run(token, ws_id, ws_name, auto_apply=auto_apply)
+
         if run_id:
             print(f"   ✅ {ws_name}: {run_id}")
             triggered_runs.append({"name": ws_name, "run_id": run_id})
         else:
             print(f"   ❌ {ws_name}: Failed to trigger")
-    
+
     print("-" * 60)
     print(f"\n✅ Triggered {len(triggered_runs)}/{len(workspaces)} runs")
-    
-    # Wait for completion if requested
-    if args.wait and triggered_runs:
-        print("\n⏳ Waiting for runs to complete...")
-        print("-" * 60)
-        
-        pending = triggered_runs.copy()
-        completed = []
-        failed = []
-        
-        while pending:
-            time.sleep(10)  # Poll every 10 seconds
-            
-            still_pending = []
-            for run in pending:
-                status = get_run_status(token, run["run_id"])
-                
-                if status in ["planned", "applied", "planned_and_finished"]:
-                    completed.append(run)
-                    print(f"   ✅ {run['name']}: {status}")
-                elif status in ["errored", "canceled", "force_canceled", "discarded"]:
-                    failed.append(run)
-                    print(f"   ❌ {run['name']}: {status}")
-                else:
-                    still_pending.append(run)
-            
-            pending = still_pending
-            
-            if pending:
-                print(f"   ⏳ {len(pending)} runs still in progress...")
-        
-        print("-" * 60)
-        print(f"\n📊 Results:")
-        print(f"   ✅ Completed: {len(completed)}")
-        print(f"   ❌ Failed: {len(failed)}")
-        
-        if failed:
-            print("\n❌ Failed runs:")
-            for run in failed:
-                print(f"   • {run['name']}: https://app.terraform.io/app/aheadlabs/workspaces/{run['name']}/runs/{run['run_id']}")
-    
-    # Print URLs
+    return triggered_runs
+
+
+def _wait_for_runs_to_complete(token, triggered_runs, org):
+    if not triggered_runs:
+        return
+
+    print("\n⏳ Waiting for runs to complete...")
+    print("-" * 60)
+
+    pending = list(triggered_runs)
+    completed = []
+    failed = []
+
+    while pending:
+        time.sleep(10)  # Poll every 10 seconds
+
+        still_pending = []
+        for run in pending:
+            status = get_run_status(token, run["run_id"])
+
+            if status in ["planned", "applied", "planned_and_finished"]:
+                completed.append(run)
+                print(f"   ✅ {run['name']}: {status}")
+            elif status in ["errored", "canceled", "force_canceled", "discarded"]:
+                failed.append(run)
+                print(f"   ❌ {run['name']}: {status}")
+            else:
+                still_pending.append(run)
+
+        pending = still_pending
+
+        if pending:
+            print(f"   ⏳ {len(pending)} runs still in progress...")
+
+    print("-" * 60)
+    print(f"\n📊 Results:")
+    print(f"   ✅ Completed: {len(completed)}")
+    print(f"   ❌ Failed: {len(failed)}")
+
+    if failed:
+        print("\n❌ Failed runs:")
+        for run in failed:
+            print(
+                f"   • {run['name']}: "
+                f"https://app.terraform.io/app/{org}/workspaces/{run['name']}/runs/{run['run_id']}"
+            )
+
+
+def _print_run_urls(triggered_runs, org):
     print("\n🔗 Run URLs:")
     for run in triggered_runs:
-        print(f"   https://app.terraform.io/app/aheadlabs/workspaces/{run['name']}/runs/{run['run_id']}")
+        print(
+            f"   https://app.terraform.io/app/{org}/workspaces/{run['name']}/runs/{run['run_id']}"
+        )
+
+
+def main():
+    org = "aheadlabs"
+    args = _parse_args()
+
+    _print_header()
+
+    token = get_token()
+    workspaces = get_all_workspaces(token, org=org)
+    workspaces = _filter_and_sort_workspaces(
+        workspaces,
+        include_pattern=args.filter,
+        exclude_pattern=args.exclude,
+    )
+
+    _print_workspace_list(workspaces)
+    _print_mode(args.apply)
+
+    if args.dry_run:
+        print("\n🔍 DRY RUN - No runs will be triggered")
+        return
+
+    if not _confirm_or_abort(len(workspaces), skip_confirmation=args.confirm):
+        return
+
+    triggered_runs = _trigger_runs(token, workspaces, auto_apply=args.apply)
+    if args.wait:
+        _wait_for_runs_to_complete(token, triggered_runs, org=org)
+
+    _print_run_urls(triggered_runs, org=org)
 
 
 if __name__ == "__main__":
