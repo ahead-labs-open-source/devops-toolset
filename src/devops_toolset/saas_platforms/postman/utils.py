@@ -27,6 +27,29 @@ def sanitize_filename(filename: str) -> str:
     return filename
 
 
+def _strip_alpha_dash_suffix(name: str) -> str:
+    if " - " not in name:
+        return name
+
+    base, suffix = name.rsplit(" - ", 1)
+    suffix_stripped = suffix.strip()
+    if suffix_stripped and suffix_stripped.replace(" ", "").isalpha():
+        return base.strip()
+    return name
+
+
+def _is_version_token(token: str) -> bool:
+    token = token.strip()
+    if len(token) < 2 or token[0].lower() != "v":
+        return False
+
+    rest = token[1:]
+    if not rest or not rest[0].isdigit():
+        return False
+
+    return all(ch.isalnum() or ch in ".-" for ch in rest)
+
+
 def strip_version_suffix(name: str, *, strip_dash_suffix: bool = False) -> str:
     """Strip common trailing version suffixes from a resource name.
 
@@ -42,26 +65,8 @@ def strip_version_suffix(name: str, *, strip_dash_suffix: bool = False) -> str:
     if not result:
         return result
 
-    if strip_dash_suffix and " - " in result:
-        base, suffix = result.rsplit(" - ", 1)
-        suffix_stripped = suffix.strip()
-        if suffix_stripped and suffix_stripped.replace(" ", "").isalpha():
-            result = base.strip()
-
-    def _is_version_token(token: str) -> bool:
-        token = token.strip()
-        if len(token) < 2:
-            return False
-        if token[0].lower() != "v":
-            return False
-        rest = token[1:]
-        if not rest or not rest[0].isdigit():
-            return False
-        for ch in rest:
-            if ch.isalnum() or ch in ".-":
-                continue
-            return False
-        return True
+    if strip_dash_suffix:
+        result = _strip_alpha_dash_suffix(result)
 
     tokens = result.split()
     while tokens and _is_version_token(tokens[-1]):
