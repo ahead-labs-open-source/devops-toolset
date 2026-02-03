@@ -234,6 +234,7 @@ def test_fetch_keyvault_secret_includes_version_if_present(subprocess_mock):
     call_args = subprocess_mock.call_args[0][0]
     assert "--version" in call_args
     assert "abc123" in call_args
+    assert result == "secret-value"
 
 
 @patch("subprocess.run")
@@ -280,7 +281,7 @@ def test_parse_template_extracts_repository_variables():
     }
     
     # Act
-    variables, secrets = sut.parse_template(template)
+    variables, _ = sut.parse_template(template)
     
     # Assert
     assert len(variables) == 2
@@ -301,7 +302,7 @@ def test_parse_template_extracts_repository_secrets():
     }
     
     # Act
-    variables, secrets = sut.parse_template(template)
+    _, secrets = sut.parse_template(template)
     
     # Assert
     assert len(secrets) == 1
@@ -330,7 +331,7 @@ def test_parse_template_extracts_environment_variables():
     }
     
     # Act
-    variables, secrets = sut.parse_template(template)
+    variables, _ = sut.parse_template(template)
     
     # Assert
     assert len(variables) == 2
@@ -353,7 +354,7 @@ def test_parse_template_extracts_environment_secrets():
     }
     
     # Act
-    variables, secrets = sut.parse_template(template)
+    _, secrets = sut.parse_template(template)
     
     # Assert
     assert len(secrets) == 1
@@ -377,7 +378,7 @@ def test_parse_template_fetches_keyvault_secrets_when_requested(keyvault_mock):
     keyvault_mock.return_value = "fetched-secret-value"
     
     # Act
-    variables, secrets = sut.parse_template(template, fetch_from_keyvault=True)
+    _, secrets = sut.parse_template(template, fetch_from_keyvault=True)
     
     # Assert
     keyvault_mock.assert_called_once_with(KEYVAULT_URL)
@@ -398,7 +399,7 @@ def test_parse_template_skips_keyvault_fetch_when_not_requested(keyvault_mock):
     }
     
     # Act
-    variables, secrets = sut.parse_template(template, fetch_from_keyvault=False)
+    _, secrets = sut.parse_template(template, fetch_from_keyvault=False)
     
     # Assert
     keyvault_mock.assert_not_called()
