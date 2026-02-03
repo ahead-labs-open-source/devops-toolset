@@ -22,7 +22,25 @@ import sys
 import time
 import argparse
 import urllib.request
+from urllib.parse import urljoin, urlparse
 from datetime import datetime
+
+
+API_BASE_URL = "https://app.terraform.io/api/v2/"
+
+
+def _build_api_url(endpoint: str) -> str:
+    endpoint = str(endpoint or "").strip()
+    if not endpoint:
+        raise ValueError("endpoint is required")
+
+    url = urljoin(API_BASE_URL, endpoint.lstrip("/"))
+    parsed = urlparse(url)
+    if parsed.scheme != "https" or parsed.netloc != "app.terraform.io":
+        raise ValueError("Invalid API endpoint")
+    if not parsed.path.startswith("/api/v2/"):
+        raise ValueError("Invalid API endpoint")
+    return url
 
 
 def get_token():
@@ -40,7 +58,7 @@ def get_token():
 
 def api_request(endpoint, token, method="GET", data=None):
     """Make an API request to HCP Terraform."""
-    url = f"https://app.terraform.io/api/v2{endpoint}"
+    url = _build_api_url(endpoint)
     headers = {
         "Authorization": f"Bearer {token}",
         "Content-Type": "application/vnd.api+json"

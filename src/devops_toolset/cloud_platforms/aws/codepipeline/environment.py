@@ -94,4 +94,4 @@ def log_environment_variables(platform_keys: dict):
 
 
 if __name__ == "__main__":
-    help(__name__)
+    print(__doc__ or "")

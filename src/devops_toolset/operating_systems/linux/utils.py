@@ -51,4 +51,4 @@ def edit_multiple_in_place(replacements: dict, file_path: str):
 
 
 if __name__ == "__main__":
-    help(__name__)
+    print(__doc__ or "")

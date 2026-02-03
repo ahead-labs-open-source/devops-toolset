@@ -137,4 +137,4 @@ def remove_mysql_flexible_server_firewall_rule(server_name: str, resource_group:
 
 
 if __name__ == "__main__":
-    help(__name__)
+    print(__doc__ or "")

@@ -369,7 +369,7 @@ class OpenAPIToPostmanConverter:
             schema = json_content.get('schema', {})
             if example is None:
                 # Schema may not be a concrete example; use empty object by default
-                example = {} if isinstance(schema, dict) else {}
+                example = {}
             
             return {
                 'mode': 'raw',

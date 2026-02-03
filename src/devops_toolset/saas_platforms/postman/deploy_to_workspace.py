@@ -148,19 +148,6 @@ def _find_uid_by_base_name(
     return None
 
 
-
-    if "environment" in env_export and isinstance(env_export.get("environment"), dict):
-        env_obj = cast(dict[str, Any], env_export["environment"])
-    else:
-        env_obj = env_export
-    
-    api_id = str(env_obj.get("x-api-id", "")).strip()
-    if api_id:
-        return api_id
-    # Fallback to name for backward compatibility
-    return _environment_name_from_export(env_export)
-
-
 def _wrap_collection_for_api(collection_export: dict[str, Any]) -> dict[str, Any]:
     return {"collection": _strip_id_fields(collection_export)}
 

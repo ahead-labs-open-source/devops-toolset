@@ -37,4 +37,4 @@ def create_invalidation(distribution_id: str, invalidation_paths: list[str] = ["
 
 
 if __name__ == "__main__":
-    help(__name__)
+    print(__doc__ or "")
