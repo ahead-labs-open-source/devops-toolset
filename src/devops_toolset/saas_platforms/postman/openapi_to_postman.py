@@ -377,55 +377,67 @@ class OpenAPIToPostmanConverter:
         Returns:
             Postman body object or None
         """
-        if not request_body:
+        content = self._request_body_content(request_body)
+        if not content:
             return None
-        
-        content_raw: Any = request_body.get('content', {})
-        content: dict[str, Any] = cast(dict[str, Any], content_raw) if isinstance(content_raw, dict) else {}
-        
-        # Prefer JSON content
+
         if 'application/json' in content:
-            json_content_raw: Any = content.get('application/json')
-            json_content: dict[str, Any] = cast(dict[str, Any], json_content_raw) if isinstance(json_content_raw, dict) else {}
-
-            example: Any = json_content.get('example')
-            if example is None:
-                examples: Any = json_content.get('examples') or {}
-                if isinstance(examples, dict) and examples:
-                    first_example = next(iter(cast(dict[str, Any], examples).values()))
-                    if isinstance(first_example, dict) and 'value' in first_example:
-                        example = first_example['value']
-
-            schema = json_content.get('schema', {})
-            if example is None:
-                # Schema may not be a concrete example; use empty object by default
-                example = {}
-            
-            return {
-                'mode': 'raw',
-                'raw': json.dumps(example, indent=2, ensure_ascii=False),
-                'options': {
-                    'raw': {
-                        'language': 'json'
-                    }
-                }
-            }
-        
-        # Handle form data
-        elif 'application/x-www-form-urlencoded' in content:
+            return self._postman_json_body(content.get('application/json'))
+        if 'application/x-www-form-urlencoded' in content:
             return {
                 'mode': 'urlencoded',
-                'urlencoded': []
+                'urlencoded': [],
             }
-        
-        # Handle multipart form data
-        elif 'multipart/form-data' in content:
+        if 'multipart/form-data' in content:
             return {
                 'mode': 'formdata',
-                'formdata': []
+                'formdata': [],
             }
-        
+
         return None
+
+    @staticmethod
+    def _request_body_content(request_body: Optional[dict[str, Any]]) -> dict[str, Any]:
+        if not request_body:
+            return {}
+        content_raw: Any = request_body.get('content', {})
+        return cast(dict[str, Any], content_raw) if isinstance(content_raw, dict) else {}
+
+    @staticmethod
+    def _extract_json_example(json_content: dict[str, Any]) -> Any:
+        example: Any = json_content.get('example')
+        if example is not None:
+            return example
+
+        examples: Any = json_content.get('examples') or {}
+        if not isinstance(examples, dict) or not examples:
+            return None
+
+        first_example = next(iter(examples.values()), None)
+        if isinstance(first_example, dict) and 'value' in first_example:
+            return first_example['value']
+
+        return None
+
+    def _postman_json_body(self, json_content_raw: Any) -> dict[str, Any]:
+        json_content: dict[str, Any] = (
+            cast(dict[str, Any], json_content_raw) if isinstance(json_content_raw, dict) else {}
+        )
+
+        example = self._extract_json_example(json_content)
+        if example is None:
+            # Schema may not be a concrete example; use empty object by default
+            example = {}
+
+        return {
+            'mode': 'raw',
+            'raw': json.dumps(example, indent=2, ensure_ascii=False),
+            'options': {
+                'raw': {
+                    'language': 'json',
+                }
+            },
+        }
 
     @staticmethod
     def _to_lower_camel_from_header_name(header_name: str) -> str:
@@ -438,53 +450,74 @@ class OpenAPIToPostmanConverter:
 
     def _security_headers_for_operation(self, operation: dict[str, Any]) -> list[dict[str, Any]]:
         """Build Postman headers implied by OpenAPI security requirements."""
+        security_reqs = self._security_requirements_for_operation(operation)
+        schemes = self._security_schemes()
+        used_scheme_names = self._used_security_scheme_names(security_reqs)
+
+        headers: list[dict[str, Any]] = []
+        for scheme_name in sorted(used_scheme_names):
+            scheme = self._scheme_dict(schemes.get(scheme_name, {}))
+            header = self._header_for_security_scheme(scheme)
+            if header:
+                headers.append(header)
+
+        return headers
+
+    def _security_requirements_for_operation(self, operation: dict[str, Any]) -> list[dict[str, Any]]:
         security_reqs_raw: Any = operation.get('security')
         if security_reqs_raw is None:
             security_reqs_raw = self.openapi_spec.get('security', []) if self.openapi_spec else []
 
-        security_reqs: list[dict[str, Any]] = []
-        if isinstance(security_reqs_raw, list):
-            security_reqs = [r for r in security_reqs_raw if isinstance(r, dict)]
+        if not isinstance(security_reqs_raw, list):
+            return []
+        return [r for r in security_reqs_raw if isinstance(r, dict)]
 
+    def _security_schemes(self) -> dict[str, Any]:
         schemes_raw: Any = (self.openapi_spec or {}).get('components', {}).get('securitySchemes', {})
-        schemes: dict[str, Any] = schemes_raw if isinstance(schemes_raw, dict) else {}
+        return schemes_raw if isinstance(schemes_raw, dict) else {}
 
+    @staticmethod
+    def _used_security_scheme_names(security_reqs: list[dict[str, Any]]) -> set[str]:
         used_scheme_names: set[str] = set()
         for req in security_reqs:
             used_scheme_names.update(str(k) for k in req.keys())
+        return used_scheme_names
 
-        headers: list[dict[str, Any]] = []
-        for scheme_name in sorted(used_scheme_names):
-            scheme_raw = schemes.get(scheme_name, {})
-            scheme: dict[str, Any] = scheme_raw if isinstance(scheme_raw, dict) else {}
-            scheme_type = str(scheme.get('type', '')).lower()
+    @staticmethod
+    def _scheme_dict(value: Any) -> dict[str, Any]:
+        return value if isinstance(value, dict) else {}
 
-            if scheme_type == 'apikey' and str(scheme.get('in', '')).lower() == 'header':
-                header_name = str(scheme.get('name', '')).strip()
-                if not header_name:
-                    continue
-                var_key = self._to_lower_camel_from_header_name(header_name)
-                if not var_key:
-                    continue
-                headers.append(
-                    {
-                        'key': header_name,
-                        'value': f"{{{{{var_key}}}}}",
-                        'description': str(scheme.get('description', '')),
-                        'disabled': False,
-                    }
-                )
-            elif scheme_type == 'oauth2':
-                headers.append(
-                    {
-                        'key': 'Authorization',
-                        'value': 'Bearer {{accessToken}}',
-                        'description': 'OAuth2 access token',
-                        'disabled': False,
-                    }
-                )
+    def _header_for_security_scheme(self, scheme: dict[str, Any]) -> Optional[dict[str, Any]]:
+        scheme_type = str(scheme.get('type', '')).lower()
+        if scheme_type == 'apikey':
+            return self._header_for_apikey_scheme(scheme)
+        if scheme_type == 'oauth2':
+            return {
+                'key': 'Authorization',
+                'value': 'Bearer {{accessToken}}',
+                'description': 'OAuth2 access token',
+                'disabled': False,
+            }
+        return None
 
-        return headers
+    def _header_for_apikey_scheme(self, scheme: dict[str, Any]) -> Optional[dict[str, Any]]:
+        if str(scheme.get('in', '')).lower() != 'header':
+            return None
+
+        header_name = str(scheme.get('name', '')).strip()
+        if not header_name:
+            return None
+
+        var_key = self._to_lower_camel_from_header_name(header_name)
+        if not var_key:
+            return None
+
+        return {
+            'key': header_name,
+            'value': f"{{{{{var_key}}}}}",
+            'description': str(scheme.get('description', '')),
+            'disabled': False,
+        }
 
     def _create_postman_request(
         self,
