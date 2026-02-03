@@ -22,11 +22,12 @@ import sys
 import time
 import argparse
 import urllib.request
-from urllib.parse import urljoin, urlparse
+from urllib.parse import quote, urlencode, urljoin, urlparse
 from datetime import datetime
 
 
 API_BASE_URL = "https://app.terraform.io/api/v2/"
+UI_BASE_URL = "https://app.terraform.io/"
 
 
 def _build_api_url(endpoint: str) -> str:
@@ -41,6 +42,27 @@ def _build_api_url(endpoint: str) -> str:
     if not parsed.path.startswith("/api/v2/"):
         raise ValueError("Invalid API endpoint")
     return url
+
+
+def _quote_path_segment(value: str) -> str:
+    return quote(str(value), safe="")
+
+
+def _org_workspaces_endpoint(org: str, page: int, page_size: int = 50) -> str:
+    org_segment = _quote_path_segment(org)
+    query = urlencode({"page[number]": page, "page[size]": page_size})
+    return f"/organizations/{org_segment}/workspaces?{query}"
+
+
+def _runs_endpoint(run_id: str) -> str:
+    return f"/runs/{_quote_path_segment(run_id)}"
+
+
+def _ui_run_url(org: str, workspace_name: str, run_id: str) -> str:
+    org_segment = _quote_path_segment(org)
+    workspace_segment = _quote_path_segment(workspace_name)
+    run_segment = _quote_path_segment(run_id)
+    return f"{UI_BASE_URL}app/{org_segment}/workspaces/{workspace_segment}/runs/{run_segment}"
 
 
 def get_token():
@@ -84,7 +106,7 @@ def get_all_workspaces(token, org="aheadlabs"):
     page = 1
     
     while True:
-        endpoint = f"/organizations/{org}/workspaces?page%5Bnumber%5D={page}&page%5Bsize%5D=50"
+        endpoint = _org_workspaces_endpoint(org, page=page, page_size=50)
         result = api_request(endpoint, token)
         
         if not result:
@@ -101,7 +123,7 @@ def get_all_workspaces(token, org="aheadlabs"):
     return workspaces
 
 
-def trigger_run(token, workspace_id, workspace_name, auto_apply=False, message=None):
+def trigger_run(token, workspace_id, auto_apply=False, message=None):
     """Trigger a run in a workspace."""
     if message is None:
         message = f"Triggered by trigger-all-runs.py at {datetime.now().isoformat()}"
@@ -134,7 +156,7 @@ def trigger_run(token, workspace_id, workspace_name, auto_apply=False, message=N
 
 def get_run_status(token, run_id):
     """Get the status of a run."""
-    result = api_request(f"/runs/{run_id}", token)
+    result = api_request(_runs_endpoint(run_id), token)
     if result:
         return result["data"]["attributes"]["status"]
     return None
@@ -240,7 +262,7 @@ def _trigger_runs(token, workspaces, auto_apply):
         ws_id = ws["id"]
         ws_name = ws["attributes"]["name"]
 
-        run_id = trigger_run(token, ws_id, ws_name, auto_apply=auto_apply)
+        run_id = trigger_run(token, ws_id, auto_apply=auto_apply)
 
         if run_id:
             print(f"   ✅ {ws_name}: {run_id}")
@@ -286,25 +308,20 @@ def _wait_for_runs_to_complete(token, triggered_runs, org):
             print(f"   ⏳ {len(pending)} runs still in progress...")
 
     print("-" * 60)
-    print(f"\n📊 Results:")
+    print("\n📊 Results:")
     print(f"   ✅ Completed: {len(completed)}")
     print(f"   ❌ Failed: {len(failed)}")
 
     if failed:
         print("\n❌ Failed runs:")
         for run in failed:
-            print(
-                f"   • {run['name']}: "
-                f"https://app.terraform.io/app/{org}/workspaces/{run['name']}/runs/{run['run_id']}"
-            )
+            print(f"   • {run['name']}: {_ui_run_url(org, run['name'], run['run_id'])}")
 
 
 def _print_run_urls(triggered_runs, org):
     print("\n🔗 Run URLs:")
     for run in triggered_runs:
-        print(
-            f"   https://app.terraform.io/app/{org}/workspaces/{run['name']}/runs/{run['run_id']}"
-        )
+        print(f"   {_ui_run_url(org, run['name'], run['run_id'])}")
 
 
 def main():
