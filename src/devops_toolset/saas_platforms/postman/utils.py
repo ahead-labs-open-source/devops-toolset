@@ -27,6 +27,49 @@ def sanitize_filename(filename: str) -> str:
     return filename
 
 
+def strip_version_suffix(name: str, *, strip_dash_suffix: bool = False) -> str:
+    """Strip common trailing version suffixes from a resource name.
+
+    Intended for Postman resource names such as:
+    - "Test API v1-rev0"
+    - "Test API v1-rev0 v1.0.0"
+    - "Test API v2-rev1 v2.5.0 - Development"
+
+    This function intentionally avoids complex regular expressions.
+    """
+
+    result = str(name or "").strip()
+    if not result:
+        return result
+
+    if strip_dash_suffix and " - " in result:
+        base, suffix = result.rsplit(" - ", 1)
+        suffix_stripped = suffix.strip()
+        if suffix_stripped and suffix_stripped.replace(" ", "").isalpha():
+            result = base.strip()
+
+    def _is_version_token(token: str) -> bool:
+        token = token.strip()
+        if len(token) < 2:
+            return False
+        if token[0].lower() != "v":
+            return False
+        rest = token[1:]
+        if not rest or not rest[0].isdigit():
+            return False
+        for ch in rest:
+            if ch.isalnum() or ch in ".-":
+                continue
+            return False
+        return True
+
+    tokens = result.split()
+    while tokens and _is_version_token(tokens[-1]):
+        tokens.pop()
+
+    return " ".join(tokens).strip()
+
+
 def is_url(path: str) -> bool:
     """
     Check if a string is a valid URL.

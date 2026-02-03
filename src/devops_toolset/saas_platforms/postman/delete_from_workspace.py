@@ -61,9 +61,12 @@ def delete_by_api_id(
     Returns:
         Tuple of (deleted_collection_uids, deleted_environment_uids)
     """
-    import re
-    
     assets = get_workspace_assets(base_url, api_key, workspace_id)
+
+    try:
+        from devops_toolset.saas_platforms.postman.utils import strip_version_suffix
+    except ImportError:  # pragma: no cover
+        from utils import strip_version_suffix  # type: ignore
     
     deleted_collections: list[str] = []
     deleted_environments: list[str] = []
@@ -88,7 +91,7 @@ def delete_by_api_id(
     for name, uid in assets.collections_by_name.items():
         # Remove version suffixes like " v1-rev0", " v1.0.0", " v1-rev0 v1.0.0" from name for comparison
         # Matches patterns like: v1, v1.0, v1.0.0, v1-rev0, v2-rev1, etc. (with or without version number after)
-        base_name = re.sub(r'\s+v\d+([-.]\w+)*(\s+v?\d+(\.\d+)*)?$', '', name, flags=re.IGNORECASE).strip()
+        base_name = strip_version_suffix(name)
         if base_name == name_pattern:
             if dry_run:
                 print(f"🔍 [DRY-RUN] Would delete collection: {name} ({uid})")
@@ -104,7 +107,7 @@ def delete_by_api_id(
     for name, uid in assets.environments_by_name.items():
         # Match pattern like "Test API v1-rev0 v1.0.0 - Staging"
         # Remove both " v1-rev0 v1.0.0" and " - Staging" parts
-        base_name = re.sub(r'\s+v\d+([-.]\w+)*(\s+v?\d+(\.\d+)*)?(\s+-\s+\w+)?$', '', name, flags=re.IGNORECASE).strip()
+        base_name = strip_version_suffix(name, strip_dash_suffix=True)
         if base_name == name_pattern:
             if dry_run:
                 print(f"🔍 [DRY-RUN] Would delete environment: {name} ({uid})")

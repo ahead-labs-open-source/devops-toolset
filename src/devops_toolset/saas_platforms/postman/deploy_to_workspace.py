@@ -124,10 +124,12 @@ def _strip_version_from_name(name: str) -> str:
         "Test API v1-rev0 v1.0.0" -> "Test API"
         "Test API v2-rev1 v2.5.0 - Development" -> "Test API - Development"
     """
-    import re
-    # Remove patterns like " v1-rev0", " v1.0.0", " v1-rev0 v1.0.0"
-    stripped = re.sub(r'\s+v\d+([-.]\w+)*(\s+v?\d+(\.\d+)*)?', '', name, flags=re.IGNORECASE)
-    return stripped.strip()
+    try:
+        from devops_toolset.saas_platforms.postman.utils import strip_version_suffix
+    except ImportError:  # pragma: no cover
+        from utils import strip_version_suffix  # type: ignore
+
+    return strip_version_suffix(name, strip_dash_suffix=True)
 
 
 def _find_uid_by_base_name(

@@ -17,7 +17,7 @@ class SonarxData(object):
     properties_file_path = f"/pathto/{properties_file_name}"
     properties_file_data = \
         f"sonar.host.url={sonar_url}\nsonar.projectKey={sonar_project_key}\nsonar.organization={sonar_organization}"
-    token = "0123456789abcdef0123456789abcdef01234567"
+    token = "dummy-token-not-a-real-secret"
     branch_feature = "/feature/branch"
     quality_gate_json_ok = "{\"projectStatus\":{\"status\":\"OK\"}}"
     quality_gate_json_error = "{\"projectStatus\":{\"status\":\"ERROR\",\"ignoredConditions\":false," \

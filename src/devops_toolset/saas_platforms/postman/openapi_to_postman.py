@@ -70,8 +70,12 @@ class OpenAPIToPostmanConverter:
         Returns:
             Slug identifier (e.g., "ai-personal-assistant-api")
         """
-        # Remove version patterns like v1, v1-rev0, v1.0.0, etc.
-        slug = re.sub(r'\s+v\d+([-.][\w.]+)*$', '', title, flags=re.IGNORECASE)
+        try:
+            from devops_toolset.saas_platforms.postman.utils import strip_version_suffix
+        except ImportError:  # pragma: no cover
+            from utils import strip_version_suffix  # type: ignore
+
+        slug = strip_version_suffix(title)
         
         # Convert to lowercase
         slug = slug.lower()
@@ -91,6 +95,10 @@ class OpenAPIToPostmanConverter:
         """
         try:
             # Check if source is a URL
+            parsed_source = urlparse(self.openapi_source)
+            if parsed_source.scheme == "http":
+                raise ValueError("Refusing to download OpenAPI spec over insecure http; use https")
+
             if is_url(self.openapi_source) or self.openapi_source.startswith(('http://', 'https://')):
                 print(f"Downloading OpenAPI spec from: {self.openapi_source}")
                 with urllib.request.urlopen(self.openapi_source) as response:
