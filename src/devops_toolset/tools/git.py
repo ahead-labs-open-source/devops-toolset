@@ -11,7 +11,7 @@ import logging
 import os
 import pathlib
 import re
-from clint.textui import prompt
+import devops_toolset.tools.prompt as prompt
 
 from devops_toolset.core.commands_core import CommandsCore
 from devops_toolset.core.literals_core import LiteralsCore

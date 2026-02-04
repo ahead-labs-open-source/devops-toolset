@@ -168,7 +168,7 @@ def test_git_commit_when_not_skip_then_call_subprocess(call_subprocess):
 # region git_init()
 
 
-@patch("clint.textui.prompt.yn")
+@patch("devops_toolset.tools.prompt.yn")
 def test_git_init_when_skip_do_nothing(prompt_yn):
     """Given arguments, when skip is true, then do nothing"""
 
@@ -184,7 +184,7 @@ def test_git_init_when_skip_do_nothing(prompt_yn):
 
 
 @patch("devops_toolset.tools.cli.call_subprocess")
-@patch("clint.textui.prompt.yn")
+@patch("devops_toolset.tools.prompt.yn")
 @pytest.mark.parametrize("prompt_user, prompt_return_value, times_called", [
     (True, True, 1),
     (True, False, 0),
