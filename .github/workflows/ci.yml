@@ -12,6 +12,8 @@ name: CI
 
 permissions:
   contents: read
+  pull-requests: write
+  checks: write
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -30,6 +32,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -73,3 +77,34 @@ jobs:
         with:
           name: coverage-${{ matrix.python-version }}
           path: coverage/coverage.xml
+
+      - name: SonarCloud scan (PR)
+        if: github.event_name == 'pull_request'
+        uses: SonarSource/sonarcloud-github-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: >
+            -Dsonar.organization=ahead-labs-open-source
+            -Dsonar.projectKey=ahead-labs-open-source_devops-toolset
+            -Dsonar.sources=src/devops_toolset
+            -Dsonar.tests=tests
+            -Dsonar.python.coverage.reportPaths=coverage/coverage.xml
+            -Dsonar.pullrequest.key=${{ github.event.pull_request.number }}
+            -Dsonar.pullrequest.branch=${{ github.head_ref }}
+            -Dsonar.pullrequest.base=${{ github.base_ref }}
+
+      - name: SonarCloud scan (main)
+        if: github.ref == 'refs/heads/main'
+        uses: SonarSource/sonarcloud-github-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: >
+            -Dsonar.organization=ahead-labs-open-source
+            -Dsonar.projectKey=ahead-labs-open-source_devops-toolset
+            -Dsonar.sources=src/devops_toolset
+            -Dsonar.tests=tests
+            -Dsonar.python.coverage.reportPaths=coverage/coverage.xml
