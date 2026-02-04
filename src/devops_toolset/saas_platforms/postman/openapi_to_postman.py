@@ -146,7 +146,7 @@ class OpenAPIToPostmanConverter:
         # Basic OpenAPI version validation (non-fatal: raises on clearly unsupported versions)
         openapi_version = str(self.openapi_spec.get("openapi", "")).strip()
         if openapi_version and not validate_openapi_version(openapi_version):
-            raise Exception(
+            raise ValueError(
                 f"❌ Unsupported OpenAPI version: {openapi_version}. "
                 "Supported versions: 3.0.x and 3.1.0"
             )
@@ -158,7 +158,7 @@ class OpenAPIToPostmanConverter:
 
     def _parse_x_postman_environments(self) -> dict[str, dict[str, str]]:
         if "x-postman-environments" not in self.openapi_spec:
-            raise Exception(
+            raise KeyError(
                 "❌ Missing 'x-postman-environments' section in OpenAPI specification.\n"
                 "Please add the x-postman-environments section with at least one environment configuration.\n"
                 "Example:\n"
@@ -173,7 +173,7 @@ class OpenAPIToPostmanConverter:
 
         x_postman_envs_raw: Any = self.openapi_spec.get("x-postman-environments", {})
         if not isinstance(x_postman_envs_raw, dict):
-            raise Exception("❌ 'x-postman-environments' must be a dictionary/object")
+            raise TypeError("❌ 'x-postman-environments' must be a dictionary/object")
 
         # Narrow unknown types coming from YAML/JSON parsing
         x_postman_envs: dict[str, dict[str, str]] = {}
@@ -204,7 +204,7 @@ class OpenAPIToPostmanConverter:
 
             # Validate at least one environment exists (excluding _global)
             if not env_list:
-                raise Exception(
+                raise ValueError(
                     "❌ The 'x-postman-environments' section has no environments defined.\n"
                     "At least one environment (other than _global) must be defined."
                 )
@@ -239,7 +239,7 @@ class OpenAPIToPostmanConverter:
             version_display = self._format_version_display()
             self._load_or_validate_environments(version_display)
         except Exception as e:
-            raise Exception(f"Error loading OpenAPI specification: {str(e)}")
+            raise RuntimeError(f"Error loading OpenAPI specification: {str(e)}") from e
 
     def _validate_environment_consistency(self, x_postman_envs: dict[str, dict[str, str]]) -> None:
         """
@@ -274,7 +274,7 @@ class OpenAPIToPostmanConverter:
             error_msg = "❌ Environment validation failed: Inconsistent keys in x-postman-environments\n"
             error_msg += "\n".join(inconsistencies)
             error_msg += f"\n\nAll environments must have the same keys. Expected keys: {', '.join(sorted(all_keys))}"
-            raise Exception(error_msg)
+            raise ValueError(error_msg)
         
         print(f"✅ Environment validation passed: All environments have consistent keys ({', '.join(sorted(all_keys))})")
 
@@ -664,7 +664,7 @@ class OpenAPIToPostmanConverter:
 
     def _require_openapi_loaded(self) -> None:
         if not self.openapi_spec:
-            raise Exception("OpenAPI specification not loaded. Call load_openapi_spec() first.")
+            raise RuntimeError("OpenAPI specification not loaded. Call load_openapi_spec() first.")
 
     def _get_paths_dict(self) -> dict[str, Any]:
         paths_raw: Any = self.openapi_spec.get('paths', {})

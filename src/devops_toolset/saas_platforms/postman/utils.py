@@ -128,26 +128,32 @@ def get_response_example(responses: dict[str, Any]) -> Optional[dict[str, Any]]:
     Returns:
         Example response or None
     """
-    # Try to find successful response
+    # Try to find a successful JSON response
     for status_code in ['200', '201', '202', '204']:
-        if status_code in responses:
-            response = responses[status_code]
-            content = response.get('content', {})
-            
-            if 'application/json' in content:
-                json_content = content['application/json']
-                
-                # Check for example
-                if 'example' in json_content:
-                    return json_content['example']
-                
-                # Check for examples
-                if 'examples' in json_content:
-                    examples = json_content['examples']
-                    first_example = next(iter(examples.values()), None)
-                    if first_example and 'value' in first_example:
-                        return first_example['value']
-    
+        response = responses.get(status_code)
+        if not isinstance(response, dict):
+            continue
+
+        content = response.get('content')
+        if not isinstance(content, dict):
+            continue
+
+        json_content = content.get('application/json')
+        if not isinstance(json_content, dict):
+            continue
+
+        example = json_content.get('example')
+        if example is not None:
+            return example
+
+        examples = json_content.get('examples')
+        if not isinstance(examples, dict) or not examples:
+            continue
+
+        first_example = next(iter(examples.values()), None)
+        if isinstance(first_example, dict) and 'value' in first_example:
+            return first_example['value']
+
     return None
 
 

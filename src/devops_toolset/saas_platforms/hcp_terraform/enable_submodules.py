@@ -72,8 +72,6 @@ class HCPTerraformClient:
     
     def enable_submodules(self, workspace_name: str) -> bool:
         """Enable submodules for a workspace."""
-        url = f"{self.base_url}/workspaces/{workspace_name}"
-        
         # Get workspace ID first
         workspace = self.get_workspace(workspace_name)
         if not workspace:
@@ -280,7 +278,14 @@ Examples:
     print("HCP Terraform Submodules Configuration")
     print("=" * 60)
     print(f"Organization: {args.organization}")
-    print(f"Mode: {'DRY RUN' if args.dry_run else 'VERIFY ONLY' if args.verify_only else 'APPLY CHANGES'}")
+
+    if args.dry_run:
+        mode = "DRY RUN"
+    elif args.verify_only:
+        mode = "VERIFY ONLY"
+    else:
+        mode = "APPLY CHANGES"
+    print(f"Mode: {mode}")
     print()
     
     try:

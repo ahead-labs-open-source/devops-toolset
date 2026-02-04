@@ -381,10 +381,10 @@ def cmd_plan(ctx: LoopContext) -> int:
         }
         text = json.dumps(payload, indent=2, ensure_ascii=False)
         _write_output(text, ctx.out)
-        return 0
+        return 1 if remaining else 0
 
     lines: list[str] = []
-    lines.append(f"# SonarCloud fix plan")
+    lines.append("# SonarCloud fix plan")
     lines.append("")
     lines.append(f"- Organization: `{ctx.organization}`")
     lines.append(f"- Project: `{ctx.project}`")
@@ -400,7 +400,7 @@ def cmd_plan(ctx: LoopContext) -> int:
         lines.append(_render_issue_md(it))
     text = "\n".join(lines)
     _write_output(text, ctx.out)
-    return 0
+    return 1 if remaining else 0
 
 
 def cmd_next(ctx: LoopContext) -> int:
@@ -415,10 +415,10 @@ def cmd_next(ctx: LoopContext) -> int:
     nxt = remaining[0]
     if ctx.format == "md":
         print(_render_issue_md(nxt))
-        return 0
+        return 1
 
     print(json.dumps({"remaining": len(remaining), "next": nxt}, indent=2, ensure_ascii=False))
-    return 0
+    return 1
 
 
 def _update_state_list(state: dict[str, Any], key: str, list_name: str) -> None:

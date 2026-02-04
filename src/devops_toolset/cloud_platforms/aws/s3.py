@@ -50,7 +50,7 @@ def get_filtered_objects_from_bucket(bucket_name: str, object_prefix: str, desti
         raise ValueError()
 
     object_list = list_objects_in_bucket(bucket_name, object_prefix)
-    key_list = list(map(lambda x: x["Key"], object_list))
+    key_list = [obj["Key"] for obj in object_list if isinstance(obj, dict) and "Key" in obj]
     get_objects_from_bucket(bucket_name, key_list, destination_path)
 
 
