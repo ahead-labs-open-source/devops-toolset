@@ -94,11 +94,13 @@ class OpenAPIToPostmanConverter:
     def _load_openapi_source_text(self) -> tuple[str, Optional[Path]]:
         """Load raw OpenAPI source text from URL or local file."""
 
-        parsed_source = urlparse(self.openapi_source)
-        if parsed_source.scheme == "http":
-            raise ValueError("Refusing to download OpenAPI spec over insecure http; use https")
+        if is_url(self.openapi_source):
+            parsed_source = urlparse(self.openapi_source)
+            if parsed_source.scheme != "https":
+                raise ValueError(
+                    "Refusing to download OpenAPI spec over clear-text or unsupported protocol; use https"
+                )
 
-        if is_url(self.openapi_source) or self.openapi_source.startswith(("http://", "https://")):
             print(f"Downloading OpenAPI spec from: {self.openapi_source}")
             with urllib.request.urlopen(self.openapi_source) as response:
                 content = response.read().decode("utf-8")
