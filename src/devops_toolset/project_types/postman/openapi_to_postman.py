@@ -65,10 +65,10 @@ class OpenAPIToPostmanConverter:
         Generate a stable API identifier slug from the title, removing version suffix.
         
         Args:
-            title: The API title (e.g., "AI Personal Assistant API v1-rev0")
+            title: The API title (e.g., "AI Assistant API v1-rev0")
             
         Returns:
-            Slug identifier (e.g., "ai-personal-assistant-api")
+            Slug identifier (e.g., "ai-assistant-api")
         """
         # Remove version patterns like v1, v1-rev0, v1.0.0, etc.
         slug = re.sub(r'\s+v\d+([-.][\w.]+)*$', '', title, flags=re.IGNORECASE)

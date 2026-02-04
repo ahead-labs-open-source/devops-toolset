@@ -68,7 +68,7 @@ def delete_by_api_id(
     deleted_collections: list[str] = []
     deleted_environments: list[str] = []
     
-    # Convert x-api-id slug to name pattern (e.g., "ai-personal-assistant-api" -> "AI Personal Assistant API")
+    # Convert x-api-id slug to name pattern (e.g., "ai-assistant-api" -> "AI Assistant API")
     # This is a best-effort conversion since the original casing is lost in the slug
     # We'll uppercase common acronyms
     words = x_api_id.split('-')
