@@ -91,7 +91,8 @@ jobs:
           scanner_version="6.2.1.4610"
           scanner_zip="sonar-scanner-cli-${scanner_version}-linux-x64.zip"
           curl -sSLo "${scanner_zip}" "https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/${scanner_zip}"
-          python3 -c "import zipfile; z=zipfile.ZipFile('${scanner_zip}'); z.extractall('.')"
+          unzip -q "${scanner_zip}"
+          chmod +x "sonar-scanner-${scanner_version}-linux-x64/bin/sonar-scanner" || true
           export PATH="$PWD/sonar-scanner-${scanner_version}-linux-x64/bin:$PATH"
 
           args=(
