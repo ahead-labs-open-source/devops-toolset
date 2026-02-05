@@ -17,17 +17,18 @@ def test_call_subprocess_given_command_srt_then_calls_popens_with_command(logtoo
     # Arrange
     foo_command = clidata.sample_command
     expected_out = clidata.sample_log_message_info
-    shell = True
+    expected_args = ["sample", "command"]
+    shell = False
     stdout = subprocess.PIPE
     stderr = subprocess.PIPE
-    subprocess_mock.return_value.return_code = 0
+    subprocess_mock.return_value.returncode = 0
     subprocess_mock.return_value.communicate.return_value = (expected_out, expected_out)
 
     # Act
     sut.call_subprocess(foo_command)
 
     # Assert
-    subprocess_mock.assert_called_once_with(foo_command, shell=shell, stdout=stdout, stderr=stderr)
+    subprocess_mock.assert_called_once_with(expected_args, shell=shell, stdout=stdout, stderr=stderr)
 
 
 @mock.patch.object(subprocess, "Popen")
@@ -38,7 +39,7 @@ def test_call_subprocess_given_command_srt_when_stdout_has_lines_then_log_info(s
     foo_command = clidata.sample_command
     expected_log_message = clidata.sample_log_message_info
     log_level = log_tools.LogLevel.info
-    subprocess_mock.return_value.return_code = 0
+    subprocess_mock.return_value.returncode = 0
     subprocess_mock.return_value.communicate.return_value = (expected_log_message, b"")
 
     # Act
@@ -56,7 +57,7 @@ def test_call_subprocess_given_command_srt_when_stderr_has_lines_then_log_error(
     foo_command = clidata.sample_command
     expected_log_message = clidata.sample_log_message_error
     log_level = log_tools.LogLevel.error
-    subprocess_mock.return_value.return_code = 0
+    subprocess_mock.return_value.returncode = 1
     subprocess_mock.return_value.communicate.return_value = (b"", expected_log_message)
 
     # Act
@@ -76,7 +77,7 @@ def test_call_subprocess_with_result_logs_stdouterr_when_err_and_log_err_is_enab
     """ Given command, logs to stdouterr when command returned error and log_err is enabled """
     # Arrange
     foo_command = clidata.sample_command
-    subprocess_mock.return_value.return_code = 0
+    subprocess_mock.return_value.returncode = 0
     subprocess_mock.return_value.communicate.return_value = (b"Some error", b"Some error")
 
     # Act
@@ -92,7 +93,7 @@ def test_call_subprocess_with_result_returns_err_without_logging_when_log_err_di
     # Arrange
     foo_command = clidata.sample_command
     expected_return = b"Some output"
-    subprocess_mock.return_value.return_code = 0
+    subprocess_mock.return_value.returncode = 0
     subprocess_mock.return_value.communicate.return_value = (expected_return, None)
 
     # Act

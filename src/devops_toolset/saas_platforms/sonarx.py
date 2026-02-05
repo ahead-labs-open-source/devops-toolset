@@ -131,4 +131,4 @@ def generate_branch_segment(branch: str = "master", pull_request: bool = False):
 
 
 if __name__ == "__main__":
-    help(__name__)
+    print(__doc__ or "")

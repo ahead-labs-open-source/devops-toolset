@@ -41,4 +41,4 @@ def generate_htaccess_file_based_basic_auth_file_for_user(realm_name: str, passw
 
 
 if __name__ == "__main__":
-    help(__name__)
+    print(__doc__ or "")

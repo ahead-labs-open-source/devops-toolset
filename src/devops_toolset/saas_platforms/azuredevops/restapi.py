@@ -179,4 +179,4 @@ def get_last_artifact(organization: str, project: str, artifact_name: str, desti
 
 
 if __name__ == "__main__":
-    help(__name__)
+    print(__doc__ or "")

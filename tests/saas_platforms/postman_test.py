@@ -29,6 +29,17 @@ from devops_toolset.saas_platforms.postman.utils import (
 )
 
 
+TEST_API_TITLE = "Test API"
+EXAMPLE_SERVER_URL = "https://api.example.com/v1"
+SUCCESSFUL_RESPONSE_DESCRIPTION = "Successful response"
+APPLICATION_JSON = "application/json"
+TEST_OPENAPI_SOURCE_FILENAME = "test.json"
+TEST_SPEC_FILENAME = "test_spec.json"
+POSTMAN_API_BASE_URL = "https://api.postman.com"
+MY_API_NAME = "My API"
+MY_ENV_NAME = "My Env"
+
+
 class TestOpenAPIToPostmanConverter:
     """Test cases for OpenAPIToPostmanConverter class."""
 
@@ -38,13 +49,13 @@ class TestOpenAPIToPostmanConverter:
         return {
             "openapi": "3.0.0",
             "info": {
-                "title": "Test API",
+                "title": TEST_API_TITLE,
                 "version": "1.0.0",
                 "description": "A test API"
             },
             "servers": [
                 {
-                    "url": "https://api.example.com/v1"
+                    "url": EXAMPLE_SERVER_URL
                 }
             ],
             "paths": {
@@ -66,9 +77,9 @@ class TestOpenAPIToPostmanConverter:
                         ],
                         "responses": {
                             "200": {
-                                "description": "Successful response",
+                                "description": SUCCESSFUL_RESPONSE_DESCRIPTION,
                                 "content": {
-                                    "application/json": {
+                                    APPLICATION_JSON: {
                                         "schema": {
                                             "type": "array"
                                         }
@@ -84,7 +95,7 @@ class TestOpenAPIToPostmanConverter:
                         "requestBody": {
                             "required": True,
                             "content": {
-                                "application/json": {
+                                APPLICATION_JSON: {
                                     "schema": {
                                         "type": "object",
                                         "properties": {
@@ -123,7 +134,7 @@ class TestOpenAPIToPostmanConverter:
                         ],
                         "responses": {
                             "200": {
-                                "description": "Successful response"
+                                "description": SUCCESSFUL_RESPONSE_DESCRIPTION
                             }
                         }
                     }
@@ -141,12 +152,12 @@ class TestOpenAPIToPostmanConverter:
     def test_converter_initialization(self, temp_output_dir):
         """Test converter initialization."""
         converter = OpenAPIToPostmanConverter(
-            openapi_source="test.json",
+            openapi_source=TEST_OPENAPI_SOURCE_FILENAME,
             output_folder=str(temp_output_dir),
             environments=["staging", "production"]
         )
         
-        assert converter.openapi_source == "test.json"
+        assert converter.openapi_source == TEST_OPENAPI_SOURCE_FILENAME
         assert converter.output_folder == temp_output_dir
         assert converter.environments == ["staging", "production"]
         assert temp_output_dir.exists()
@@ -154,7 +165,7 @@ class TestOpenAPIToPostmanConverter:
     def test_load_openapi_spec_from_dict(self, temp_output_dir, sample_openapi_spec):
         """Test loading OpenAPI spec from dictionary."""
         # Create a temporary JSON file
-        spec_file = temp_output_dir / "test_spec.json"
+        spec_file = temp_output_dir / TEST_SPEC_FILENAME
         with open(spec_file, 'w') as f:
             json.dump(sample_openapi_spec, f)
         
@@ -167,12 +178,12 @@ class TestOpenAPIToPostmanConverter:
         converter.load_openapi_spec()
         
         assert converter.openapi_spec == sample_openapi_spec
-        assert converter.api_title == "Test API"
+        assert converter.api_title == TEST_API_TITLE
         assert converter.api_version == "1.0.0"
 
     def test_get_base_url(self, temp_output_dir, sample_openapi_spec):
         """Test extracting base URL from OpenAPI spec."""
-        spec_file = temp_output_dir / "test_spec.json"
+        spec_file = temp_output_dir / TEST_SPEC_FILENAME
         with open(spec_file, 'w') as f:
             json.dump(sample_openapi_spec, f)
         
@@ -185,12 +196,12 @@ class TestOpenAPIToPostmanConverter:
         converter.load_openapi_spec()
         base_url = converter._get_base_url()
         
-        assert base_url == "https://api.example.com/v1"
+        assert base_url == EXAMPLE_SERVER_URL
 
     def test_convert_parameters(self, temp_output_dir):
         """Test parameter conversion."""
         converter = OpenAPIToPostmanConverter(
-            openapi_source="test.json",
+            openapi_source=TEST_OPENAPI_SOURCE_FILENAME,
             output_folder=str(temp_output_dir),
             environments=["test"]
         )
@@ -227,14 +238,14 @@ class TestOpenAPIToPostmanConverter:
     def test_convert_request_body_json(self, temp_output_dir):
         """Test converting JSON request body."""
         converter = OpenAPIToPostmanConverter(
-            openapi_source="test.json",
+            openapi_source=TEST_OPENAPI_SOURCE_FILENAME,
             output_folder=str(temp_output_dir),
             environments=["test"]
         )
         
         request_body = {
             "content": {
-                "application/json": {
+                APPLICATION_JSON: {
                     "schema": {
                         "type": "object"
                     },
@@ -256,7 +267,7 @@ class TestOpenAPIToPostmanConverter:
     def test_create_auth_request(self, temp_output_dir):
         """Test creation of JWT auth request."""
         converter = OpenAPIToPostmanConverter(
-            openapi_source="test.json",
+            openapi_source=TEST_OPENAPI_SOURCE_FILENAME,
             output_folder=str(temp_output_dir),
             environments=["test"]
         )
@@ -278,7 +289,7 @@ class TestOpenAPIToPostmanConverter:
 
     def test_generate_collection(self, temp_output_dir, sample_openapi_spec):
         """Test collection generation."""
-        spec_file = temp_output_dir / "test_spec.json"
+        spec_file = temp_output_dir / TEST_SPEC_FILENAME
         with open(spec_file, 'w') as f:
             json.dump(sample_openapi_spec, f)
         
@@ -318,7 +329,7 @@ class TestOpenAPIToPostmanConverter:
 
     def test_generate_environment_files(self, temp_output_dir, sample_openapi_spec):
         """Test environment file generation."""
-        spec_file = temp_output_dir / "test_spec.json"
+        spec_file = temp_output_dir / TEST_SPEC_FILENAME
         with open(spec_file, 'w') as f:
             json.dump(sample_openapi_spec, f)
         
@@ -519,7 +530,7 @@ class TestIntegration:
         assert 'api_version' in result
         assert 'api_title' in result
         
-        assert result['api_title'] == "Test API"
+        assert result['api_title'] == TEST_API_TITLE
         assert result['api_version'] == "1.0.0"
         assert len(result['environments']) == 2
         
@@ -534,13 +545,13 @@ class TestIntegration:
         return {
             "openapi": "3.0.0",
             "info": {
-                "title": "Test API",
+                "title": TEST_API_TITLE,
                 "version": "1.0.0",
                 "description": "A test API for integration testing"
             },
             "servers": [
                 {
-                    "url": "https://api.example.com/v1"
+                    "url": EXAMPLE_SERVER_URL
                 }
             ],
             "paths": {
@@ -551,7 +562,7 @@ class TestIntegration:
                         "tags": ["Users"],
                         "responses": {
                             "200": {
-                                "description": "Successful response"
+                                "description": SUCCESSFUL_RESPONSE_DESCRIPTION
                             }
                         }
                     }
@@ -562,35 +573,35 @@ class TestIntegration:
 
 class TestPostmanDeployToWorkspace:
     def test_collection_name_from_export(self):
-        assert _collection_name_from_export({"info": {"name": "My API"}}) == "My API"
+        assert _collection_name_from_export({"info": {"name": MY_API_NAME}}) == MY_API_NAME
 
     def test_collection_api_id_from_export_with_api_id(self):
-        assert _collection_api_id_from_export({"info": {"name": "My API v1", "x-api-id": "my-api"}}) == "my-api"
+        assert _collection_api_id_from_export({"info": {"name": f"{MY_API_NAME} v1", "x-api-id": "my-api"}}) == "my-api"
 
     def test_collection_api_id_from_export_fallback_to_name(self):
-        assert _collection_api_id_from_export({"info": {"name": "My API"}}) == "My API"
+        assert _collection_api_id_from_export({"info": {"name": MY_API_NAME}}) == MY_API_NAME
 
     def test_environment_name_from_export_export_shape(self):
-        assert _environment_name_from_export({"name": "My Env", "values": []}) == "My Env"
+        assert _environment_name_from_export({"name": MY_ENV_NAME, "values": []}) == MY_ENV_NAME
 
     def test_environment_name_from_export_api_shape(self):
-        assert _environment_name_from_export({"environment": {"name": "My Env", "values": []}}) == "My Env"
+        assert _environment_name_from_export({"environment": {"name": MY_ENV_NAME, "values": []}}) == MY_ENV_NAME
 
     def test_environment_api_id_from_export_with_api_id(self):
-        assert _environment_api_id_from_export({"name": "My Env", "x-api-id": "my-api"}) == "my-api"
+        assert _environment_api_id_from_export({"name": MY_ENV_NAME, "x-api-id": "my-api"}) == "my-api"
 
     def test_environment_api_id_from_export_fallback_to_name(self):
-        assert _environment_api_id_from_export({"name": "My Env", "values": []}) == "My Env"
+        assert _environment_api_id_from_export({"name": MY_ENV_NAME, "values": []}) == MY_ENV_NAME
 
     def test_wrap_collection_for_api(self):
-        wrapped = _wrap_collection_for_api({"info": {"name": "My API"}, "item": []})
+        wrapped = _wrap_collection_for_api({"info": {"name": MY_API_NAME}, "item": []})
         assert "collection" in wrapped
-        assert wrapped["collection"]["info"]["name"] == "My API"
+        assert wrapped["collection"]["info"]["name"] == MY_API_NAME
 
     def test_wrap_environment_for_api(self):
-        wrapped = _wrap_environment_for_api({"name": "My Env", "values": []})
+        wrapped = _wrap_environment_for_api({"name": MY_ENV_NAME, "values": []})
         assert "environment" in wrapped
-        assert wrapped["environment"]["name"] == "My Env"
+        assert wrapped["environment"]["name"] == MY_ENV_NAME
 
     @patch("devops_toolset.saas_platforms.postman.deploy_to_workspace.requests.request")
     def test_get_workspace_assets_maps_by_name(self, request_mock: Mock):
@@ -605,7 +616,7 @@ class TestPostmanDeployToWorkspace:
         }
         request_mock.return_value = resp
 
-        assets = get_workspace_assets("https://api.postman.com", "k", "w")
+        assets = get_workspace_assets(POSTMAN_API_BASE_URL, "k", "w")
         assert assets.collections_by_name["C1"] == "c-uid"
         assert assets.environments_by_name["E1"] == "e-uid"
         # api_id maps are empty because workspace listing doesn't include x-api-id
@@ -627,7 +638,7 @@ class TestPostmanDeployToWorkspace:
         request_mock.side_effect = [resp_get_workspace, resp_get_collection, resp_put]
 
         action, uid = upsert_collection(
-            "https://api.postman.com",
+            POSTMAN_API_BASE_URL,
             "k",
             "w",
             {"info": {"name": "C1"}, "item": []},
@@ -652,7 +663,7 @@ class TestPostmanDeployToWorkspace:
         request_mock.side_effect = [resp_get, resp_post]
 
         action, name, uid = upsert_environment(
-            "https://api.postman.com",
+            POSTMAN_API_BASE_URL,
             "k",
             "w",
             {"name": "Env1", "values": []},

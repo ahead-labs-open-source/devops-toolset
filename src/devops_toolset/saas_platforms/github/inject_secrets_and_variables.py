@@ -76,7 +76,7 @@ def strip_jsonc_comments(content: str) -> str:
     content = re.sub(r'/\*.*?\*/', '', content, flags=re.DOTALL)
     
     # Remove line comments // ...
-    content = re.sub(r'//.*?$', '', content, flags=re.MULTILINE)
+    content = re.sub(r'//.*$', '', content, flags=re.MULTILINE)
     
     return content
 
@@ -153,9 +153,14 @@ def fetch_keyvault_secret(secret_url: str) -> str:
             cmd,
             capture_output=True,
             text=True,
-            check=True
+            check=True,
+            timeout=60,
         )
         return result.stdout.strip()
+    except subprocess.TimeoutExpired as e:
+        raise RuntimeError(
+            f"Timed out fetching secret from Key Vault: {secret_url}"
+        ) from e
     except subprocess.CalledProcessError as e:
         raise RuntimeError(
             f"Failed to fetch secret from Key Vault: {secret_url}\n"
@@ -233,7 +238,7 @@ def set_repository_variable(repo: str, name: str, value: str, dry_run: bool = Fa
         return
     
     try:
-        subprocess.run(cmd, check=True, capture_output=True, text=True)
+        subprocess.run(cmd, check=True, capture_output=True, text=True, timeout=60)
         print(f"✅ Set repository variable: {name}", file=sys.stderr)
     except subprocess.CalledProcessError as e:
         print(f"❌ Failed to set repository variable {name}: {e.stderr}", file=sys.stderr)
@@ -250,14 +255,21 @@ def set_repository_secret(repo: str, name: str, value: str, dry_run: bool = Fals
         value: Secret value
         dry_run: If True, only print command without executing
     """
-    cmd = ["gh", "secret", "set", name, "--repo", repo, "--body", value]
+    cmd = ["gh", "secret", "set", name, "--repo", repo, "--body-file", "-"]
     
     if dry_run:
         print(f"[DRY-RUN] Would execute: gh secret set {name} --repo {repo} --body ***", file=sys.stderr)
         return
     
     try:
-        subprocess.run(cmd, check=True, capture_output=True, text=True)
+        subprocess.run(
+            cmd,
+            check=True,
+            capture_output=True,
+            text=True,
+            input=value,
+            timeout=60,
+        )
         print(f"✅ Set repository secret: {name}", file=sys.stderr)
     except subprocess.CalledProcessError as e:
         print(f"❌ Failed to set repository secret {name}: {e.stderr}", file=sys.stderr)
@@ -282,7 +294,7 @@ def set_environment_variable(repo: str, env: str, name: str, value: str, dry_run
         return
     
     try:
-        subprocess.run(cmd, check=True, capture_output=True, text=True)
+        subprocess.run(cmd, check=True, capture_output=True, text=True, timeout=60)
         print(f"✅ Set environment variable: {name} (env: {env})", file=sys.stderr)
     except subprocess.CalledProcessError as e:
         print(f"❌ Failed to set environment variable {name} for {env}: {e.stderr}", file=sys.stderr)
@@ -300,14 +312,21 @@ def set_environment_secret(repo: str, env: str, name: str, value: str, dry_run: 
         value: Secret value
         dry_run: If True, only print command without executing
     """
-    cmd = ["gh", "secret", "set", name, "--repo", repo, "--env", env, "--body", value]
+    cmd = ["gh", "secret", "set", name, "--repo", repo, "--env", env, "--body-file", "-"]
     
     if dry_run:
         print(f"[DRY-RUN] Would execute: gh secret set {name} --repo {repo} --env {env} --body ***", file=sys.stderr)
         return
     
     try:
-        subprocess.run(cmd, check=True, capture_output=True, text=True)
+        subprocess.run(
+            cmd,
+            check=True,
+            capture_output=True,
+            text=True,
+            input=value,
+            timeout=60,
+        )
         print(f"✅ Set environment secret: {name} (env: {env})", file=sys.stderr)
     except subprocess.CalledProcessError as e:
         print(f"❌ Failed to set environment secret {name} for {env}: {e.stderr}", file=sys.stderr)

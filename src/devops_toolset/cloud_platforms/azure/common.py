@@ -40,7 +40,11 @@ def is_cli_extension_installed(name: str):
     """
 
     installed_extensions: list = get_installed_cli_extensions()
-    extension_names = map(lambda ext: ext["name"], installed_extensions)
+    extension_names = {
+        ext.get("name")
+        for ext in installed_extensions
+        if isinstance(ext, dict) and "name" in ext
+    }
 
     return name in extension_names
 
@@ -88,4 +92,4 @@ def logout():
 
 
 if __name__ == "__main__":
-    help(__name__)
+    print(__doc__ or "")

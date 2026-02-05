@@ -21,7 +21,7 @@ def test_check_required_files_returns_when_required_files_are_present(log_indent
 
 
 @patch("devops_toolset.core.log_tools.log_indented_list")
-@patch("clint.textui.prompt.yn")
+@patch("devops_toolset.tools.prompt.yn")
 @patch("logging.critical")
 def test_check_required_files_raises_value_error_when_not_required_files_and_not_use_defaults(logging_critical_mock,
                                                                                               prompt_yn_mock,
@@ -41,7 +41,7 @@ def test_check_required_files_raises_value_error_when_not_required_files_and_not
 
 
 @patch("devops_toolset.core.log_tools.log_indented_list")
-@patch("clint.textui.prompt.yn")
+@patch("devops_toolset.tools.prompt.yn")
 @patch("devops_toolset.filesystem.paths.get_file_name_from_url")
 @patch("logging.info")
 @patch("devops_toolset.filesystem.paths.files_exist_filtered")

@@ -40,4 +40,4 @@ def download_artifact_from_feed(feed_config: dict, destination_path: str, **kwar
 
 
 if __name__ == "__main__":
-    help(__name__)
+    print(__doc__ or "")

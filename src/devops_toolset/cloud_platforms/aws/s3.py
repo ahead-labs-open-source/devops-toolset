@@ -2,6 +2,7 @@
 
 import boto3
 import devops_toolset.filesystem.paths as paths
+from functools import lru_cache
 import logging
 import os
 import pathlib
@@ -15,6 +16,20 @@ from devops_toolset.cloud_platforms.aws.literals import Literals as AwsLiterals
 app: App = App()
 s3 = boto3.client("s3")
 literals = LiteralsCore([AwsLiterals])
+
+
+@lru_cache(maxsize=1)
+def _get_expected_bucket_owner() -> str:
+    env_value = os.getenv("AWS_EXPECTED_BUCKET_OWNER") or os.getenv("EXPECTED_BUCKET_OWNER")
+    if env_value:
+        return env_value.strip()
+
+    sts = boto3.client("sts")
+    identity = sts.get_caller_identity()
+    account = str(identity.get("Account", "")).strip()
+    if not account:
+        raise RuntimeError("Unable to determine AWS account id for ExpectedBucketOwner")
+    return account
 
 
 def get_filtered_objects_from_bucket(bucket_name: str, object_prefix: str, destination_path: str):
@@ -35,7 +50,7 @@ def get_filtered_objects_from_bucket(bucket_name: str, object_prefix: str, desti
         raise ValueError()
 
     object_list = list_objects_in_bucket(bucket_name, object_prefix)
-    key_list = list(map(lambda x: x["Key"], object_list))
+    key_list = [obj["Key"] for obj in object_list if isinstance(obj, dict) and "Key" in obj]
     get_objects_from_bucket(bucket_name, key_list, destination_path)
 
 
@@ -66,12 +81,14 @@ def get_objects_from_bucket(bucket_name: str, keys: list[str], destination_path:
     if empty_path:
         shutil.rmtree(destination_path_obj)
 
+    extra_args = {"ExpectedBucketOwner": _get_expected_bucket_owner()}
+
     for key in keys:
         object_destination_path_obj = pathlib.Path.joinpath(destination_path_obj, key)
         if not object_destination_path_obj.parent.exists():
             os.makedirs(object_destination_path_obj.parent)
         with open(object_destination_path_obj, "wb") as file:
-            s3.download_fileobj(bucket_name, key, file)
+            s3.download_fileobj(bucket_name, key, file, ExtraArgs=extra_args)
             logging.info(literals.get("s3_downloaded_object_from_s3_bucket").format(
                 name=key,
                 bucket=bucket_name,
@@ -144,7 +161,8 @@ def put_object_to_bucket(bucket_name: str, local_path: str, destination_key: str
     s3.put_object(
         Bucket=bucket_name,
         Body=content,
-        Key=destination_key
+        Key=destination_key,
+        ExpectedBucketOwner=_get_expected_bucket_owner(),
     )
 
     logging.info(literals.get("s3_uploaded_object_to_s3_bucket").format(
@@ -154,4 +172,4 @@ def put_object_to_bucket(bucket_name: str, local_path: str, destination_key: str
 
 
 if __name__ == "__main__":
-    help(__name__)
+    print(__doc__ or "")

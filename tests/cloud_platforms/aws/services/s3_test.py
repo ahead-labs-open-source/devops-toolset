@@ -2,6 +2,7 @@
 
 import devops_toolset.cloud_platforms.aws.s3 as sut
 import json
+import os
 import pytest
 
 from datetime import date
@@ -101,6 +102,7 @@ def test_get_objects_from_bucket_given_invalid_keys_raises_valuerror(is_valid_pa
 @patch("devops_toolset.filesystem.paths.is_valid_path")
 @patch("logging.info")
 @patch("builtins.open")
+@patch.dict(os.environ, {"AWS_EXPECTED_BUCKET_OWNER": "123456789012"}, clear=False)
 def test_get_objects_from_bucket_given_bucket_name_gets_objects(
         mock_open, logging_info_mock, makedirs_mock, is_valid_path_mock, awsdata):
     """Given a valid bucket_name downloads objects from the bucket."""
@@ -191,6 +193,7 @@ def test_put_bulk_objects_to_bucket(is_valid_path_mock, get_file_paths_in_tree_m
 @patch("builtins.open")
 @patch("devops_toolset.filesystem.paths.is_valid_path")
 @patch("logging.info")
+@patch.dict(os.environ, {"AWS_EXPECTED_BUCKET_OWNER": "123456789012"}, clear=False)
 def test_put_object_to_bucket_given_bucket_puts_object(logging_info_mock, is_valid_path_mock, mock_open, awsdata):
     """Given a bucket name uploads the object."""
 
