@@ -18,7 +18,7 @@ import devops_toolset.tools.argument_validators
 import devops_toolset.tools.devops_toolset_utils
 import devops_toolset.tools.git as git_tools
 import devops_toolset.project_types.wordpress.scripts.script_common as common
-from clint.textui import prompt
+import devops_toolset.tools.prompt as prompt
 from devops_toolset.core.literals_core import LiteralsCore
 from devops_toolset.core.app import App
 from devops_toolset.project_types.wordpress.literals import Literals as WordpressLiterals

@@ -12,6 +12,8 @@ name: CI
 
 permissions:
   contents: read
+  pull-requests: write
+  checks: write
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -19,57 +21,100 @@ concurrency:
 
 jobs:
   tests:
-    name: Unit tests (Python ${{ matrix.python-version }})
+    name: Unit tests + Sonar
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ["3.14"]
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - name: Checkout (no external actions)
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          git init
+          git remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git fetch --no-tags --prune origin "${GITHUB_SHA}"
+          git checkout --detach FETCH_HEAD
 
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: ${{ matrix.python-version }}
-          cache: pip
-          cache-dependency-path: |
-            requirements.txt
-            requirements-dev.txt
-            pyproject.toml
-            setup.py
+          # For PR analysis, ensure base branch refs exist for diff/new-code.
+          if [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
+            base_ref=$(python -c "import json,os;print(json.load(open(os.environ['GITHUB_EVENT_PATH']))['pull_request']['base']['ref'])")
+            git fetch --no-tags --prune origin "+refs/heads/${base_ref}:refs/remotes/origin/${base_ref}" || true
+          fi
+
+      - name: Show Python version
+        shell: bash
+        run: |
+          set -euo pipefail
+          python --version || true
+          python3 --version
 
       - name: Install dependencies
+        shell: bash
         run: |
+          set -euo pipefail
           python -m pip install --upgrade pip
           python -m pip install -r requirements-dev.txt
           python -m pip install -e .
 
       - name: Validate installed dependencies
+        shell: bash
         run: |
+          set -euo pipefail
           python -m pip check
 
       - name: Run tests
+        shell: bash
         run: |
+          set -euo pipefail
           mkdir -p test-results coverage
           python -m pytest \
             --junitxml=test-results/pytest.xml \
             --cov=devops_toolset \
             --cov-report=xml:coverage/coverage.xml
 
-      - name: Upload pytest results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: pytest-results-${{ matrix.python-version }}
-          path: test-results/pytest.xml
+      - name: SonarCloud scan (no external actions)
+        if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${SONAR_TOKEN:-}" ]; then
+            echo "SONAR_TOKEN is not set; skipping SonarCloud scan."
+            exit 0
+          fi
 
-      - name: Upload coverage report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-${{ matrix.python-version }}
-          path: coverage/coverage.xml
+          # Download SonarScanner CLI
+          scanner_version="6.2.1.4610"
+          scanner_zip="sonar-scanner-cli-${scanner_version}-linux-x64.zip"
+          curl -sSLo "${scanner_zip}" "https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/${scanner_zip}"
+          unzip -q "${scanner_zip}"
+          chmod +x "sonar-scanner-${scanner_version}-linux-x64/bin/sonar-scanner" || true
+          export PATH="$PWD/sonar-scanner-${scanner_version}-linux-x64/bin:$PATH"
+
+          args=(
+            -Dsonar.host.url=https://sonarcloud.io
+            -Dsonar.organization=ahead-labs-open-source
+            -Dsonar.projectKey=ahead-labs-open-source_devops-toolset
+            -Dsonar.sources=src/devops_toolset
+            -Dsonar.tests=tests
+            -Dsonar.python.coverage.reportPaths=coverage/coverage.xml
+          )
+
+          if [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
+            pr_number=$(python3 -c "import json,os;print(json.load(open(os.environ['GITHUB_EVENT_PATH']))['pull_request']['number'])")
+            pr_branch=$(python3 -c "import json,os;print(json.load(open(os.environ['GITHUB_EVENT_PATH']))['pull_request']['head']['ref'])")
+            pr_base=$(python3 -c "import json,os;print(json.load(open(os.environ['GITHUB_EVENT_PATH']))['pull_request']['base']['ref'])")
+            args+=(
+              "-Dsonar.pullrequest.key=${pr_number}"
+              "-Dsonar.pullrequest.branch=${pr_branch}"
+              "-Dsonar.pullrequest.base=${pr_base}"
+            )
+          else
+            args+=("-Dsonar.branch.name=main")
+          fi
+
+          sonar-scanner "${args[@]}"

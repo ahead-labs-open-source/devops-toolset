@@ -8,7 +8,7 @@ import json
 class Settings(object):
     """Application settings"""
 
-    _DEVOPS: str = "devops_platforms"
+    _DEVOPS: str = "saas_platforms"
     _LOCALES: str = "locales"
     _CORE: str = "core"
     _CONFIG_SETTINGS_FILE_NAME: str = "logging-config.json"

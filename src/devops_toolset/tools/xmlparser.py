@@ -8,6 +8,8 @@ class XMLParser(object):
     """ Class to to interact to xml files """
 
     def __init__(self):
+        # Legacy behavior: when no XML has been loaded, keep an empty string.
+        # Some callers/tests depend on this.
         self.xml_file = ""
 
     def parse_from_path(self, xmlpath: str):
@@ -30,5 +32,11 @@ class XMLParser(object):
                 Args
                     attribute_name: Name of the attribute which value will be recovered
                 """
-        if self.xml_file:
-            return self.xml_file.find(attribute_name).text
+        if self.xml_file == "":
+            return ""
+
+        node = self.xml_file.find(attribute_name)
+        if node is None or node.text is None:
+            return ""
+
+        return node.text

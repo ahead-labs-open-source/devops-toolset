@@ -21,7 +21,7 @@ import sys
 from devops_toolset.core.commands_core import CommandsCore
 from devops_toolset.core.literals_core import LiteralsCore
 from devops_toolset.core.app import App
-from devops_toolset.devops_platforms.azuredevops.literals import Literals as PlatformLiterals
+from devops_toolset.saas_platforms.azuredevops.literals import Literals as PlatformLiterals
 from devops_toolset.project_types.wordpress.literals import Literals as WordpressLiterals
 from devops_toolset.project_types.wordpress.basic_structure_starter import BasicStructureStarter
 from devops_toolset.project_types.wordpress.commands import Commands as WordpressCommands
