@@ -68,10 +68,10 @@ class OpenAPIToPostmanConverter:
         Generate a stable API identifier slug from the title, removing version suffix.
         
         Args:
-            title: The API title (e.g., "AI Personal Assistant API v1-rev0")
+            title: The API title (e.g., "AI Assistant API v1-rev0")
             
         Returns:
-            Slug identifier (e.g., "ai-personal-assistant-api")
+            Slug identifier (e.g., "ai-assistant-api")
         """
         try:
             from devops_toolset.saas_platforms.postman.utils import strip_version_suffix
