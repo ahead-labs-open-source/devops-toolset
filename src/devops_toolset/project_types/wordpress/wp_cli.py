@@ -515,7 +515,7 @@ def export_content_to_wxr(wordpress_path: str, destination_path: str, wrx_file_s
         destination_path: Path where the files will be generated.
         wrx_file_suffix: Suffix to be added to the generated XML file.
     """
-    date = datetime.datetime.utcnow().strftime("%Y.%m.%d")
+    date = datetime.datetime.now(datetime.UTC).strftime("%Y.%m.%d")
     suffix = "" if wrx_file_suffix is None else f"-{wrx_file_suffix}"
 
     cli.call_subprocess(commands.get("wpcli_export").format(
