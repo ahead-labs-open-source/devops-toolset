@@ -39,10 +39,10 @@ def extract_azure_credentials(template_path: str) -> Dict[str, str]:
         ValueError: If required credentials are missing
         json.JSONDecodeError: If JSON parsing fails
     """
-    # Read template file
-    template_file = Path(template_path)
+    # Convert to absolute path to handle cases where script is run from subdirectories
+    template_file = Path(template_path).resolve()
     if not template_file.exists():
-        raise FileNotFoundError(f"Template file not found: {template_path}")
+        raise FileNotFoundError(f"Template file not found: {template_path} (resolved to: {template_file})")
     
     with open(template_file, 'r', encoding='utf-8') as f:
         jsonc_content = f.read()
