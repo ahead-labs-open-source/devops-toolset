@@ -18,7 +18,7 @@ import json
 import os
 import sys
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, List
 
 # Import from the same package
 from .inject_secrets_and_variables import strip_jsonc_comments
@@ -63,7 +63,7 @@ def extract_azure_credentials(template_path: str) -> Dict[str, str]:
     
     # Validate required credentials
     if not all([arm_subscription_id, arm_tenant_id, arm_client_id]):
-        missing = []
+        missing: List[str] = []
         if not arm_subscription_id:
             missing.append('ARM_SUBSCRIPTION_ID')
         if not arm_tenant_id:
@@ -134,11 +134,11 @@ def main():
     except FileNotFoundError as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
-    except ValueError as e:
-        print(f"Error: {e}", file=sys.stderr)
-        sys.exit(1)
     except json.JSONDecodeError as e:
         print(f"Error: Invalid JSON in template file: {e}", file=sys.stderr)
+        sys.exit(1)
+    except ValueError as e:
+        print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
     except Exception as e:
         print(f"Unexpected error: {e}", file=sys.stderr)
