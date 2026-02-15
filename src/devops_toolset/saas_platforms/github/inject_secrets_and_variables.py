@@ -60,11 +60,13 @@ class Secret:
 
 def strip_jsonc_comments(content: str) -> str:
     """
-    Remove comments from JSONC content.
+    Remove comments from JSONC content while preserving strings.
     
     Supports:
     - Line comments: // comment
     - Block comments: /* comment */
+    
+    This implementation properly handles // inside JSON strings (like URLs).
     
     Args:
         content: JSONC file content
@@ -72,13 +74,53 @@ def strip_jsonc_comments(content: str) -> str:
     Returns:
         JSON content without comments
     """
-    # Remove block comments /* ... */
-    content = re.sub(r'/\*.*?\*/', '', content, flags=re.DOTALL)
+    result = []
+    i = 0
+    in_string = False
+    escape_next = False
     
-    # Remove line comments // ...
-    content = re.sub(r'//.*$', '', content, flags=re.MULTILINE)
+    while i < len(content):
+        # Handle escape sequences
+        if escape_next:
+            result.append(content[i])
+            escape_next = False
+            i += 1
+            continue
+        
+        # Check for escape character
+        if content[i] == '\\':
+            result.append(content[i])
+            escape_next = True
+            i += 1
+            continue
+        
+        # Toggle string state
+        if content[i] == '"':
+            in_string = not in_string
+            result.append(content[i])
+            i += 1
+            continue
+        
+        # Skip comments only if not in string
+        if not in_string:
+            # Block comment
+            if i < len(content) - 1 and content[i:i+2] == '/*':
+                # Find end of block comment
+                end = content.find('*/', i + 2)
+                if end != -1:
+                    i = end + 2
+                    continue
+            # Line comment
+            elif i < len(content) - 1 and content[i:i+2] == '//':
+                # Skip to end of line
+                while i < len(content) and content[i] != '\n':
+                    i += 1
+                continue
+        
+        result.append(content[i])
+        i += 1
     
-    return content
+    return ''.join(result)
 
 
 def load_template(template_path: Path) -> Dict[str, Any]:
