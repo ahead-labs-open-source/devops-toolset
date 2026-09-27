@@ -74,6 +74,9 @@ jobs:
             --cov=devops_toolset \
             --cov-report=xml:coverage/coverage.xml
 
+      - name: Bedrock generator integration (Docker)
+        run: python tests/project_types/wordpress/scaffold_smoke.py
+
       - name: SonarCloud scan (no external actions)
         if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
         shell: bash
@@ -118,3 +121,4 @@ jobs:
           fi
 
           sonar-scanner "${args[@]}"
+
