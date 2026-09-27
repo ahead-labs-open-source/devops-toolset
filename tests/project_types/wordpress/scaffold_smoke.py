@@ -24,7 +24,7 @@ def main():
             # Inspect the final image, not only its Dockerfile.
             run('docker', 'run', '--rm', '--entrypoint', 'php', 'scaffold-smoke:local', '-r',
                 "exit(file_exists('/var/www/html/.env') || !file_exists('/var/www/html/web/wp/wp-load.php') ? 1 : 0);", cwd=root)
-            run('docker', 'run', '--rm', '--entrypoint', 'id', 'scaffold-smoke:local', '-u', cwd=root)
+            run('docker', 'run', '--rm', '--entrypoint', 'sh', 'scaffold-smoke:local', '-c', 'test "$(id -u)" -ne 0', cwd=root)
             run('docker', 'compose', 'exec', '-T', 'wordpress', 'wp', '--allow-root',
                 'core', 'install', '--url=http://localhost:8080', '--title=Smoke',
                 '--admin_user=smoke', '--admin_password=disposable-ci-password',
