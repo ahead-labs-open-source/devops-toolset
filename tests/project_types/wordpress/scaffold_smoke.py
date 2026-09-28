@@ -31,6 +31,11 @@ def main():
                 '--admin_email=smoke@example.com', '--skip-email', cwd=root)
             run('docker', 'compose', 'exec', '-T', 'wordpress', 'wp', '--allow-root',
                 'theme', 'activate', 'smoke', cwd=root)
+            plugin = root / 'web/app/mu-plugins/smoke-plugin'
+            plugin.mkdir()
+            (plugin / 'smoke.php').write_text("<?php\n/* Plugin Name: Smoke */\ndefine('SCAFFOLD_MU_LOADED', true);\n")
+            run('docker', 'compose', 'exec', '-T', 'wordpress', 'wp', '--allow-root',
+                'eval', "exit(defined('SCAFFOLD_MU_LOADED') ? 0 : 1);", cwd=root)
             with urllib.request.urlopen('http://127.0.0.1:8080', timeout=15) as response:
                 assert response.status == 200
             run('docker', 'compose', 'exec', '-T', 'wordpress', 'wp', '--allow-root',
