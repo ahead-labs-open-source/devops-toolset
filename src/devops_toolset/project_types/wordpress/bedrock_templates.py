@@ -39,7 +39,9 @@ if (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https') {
     $_SERVER['HTTPS'] = 'on';
 }
 Config::apply();
-define('ABSPATH', $root . '/web/wp/');
+if (!defined('ABSPATH')) {
+    define('ABSPATH', $root . '/web/wp/');
+}
 '''
 
 DOCKERFILE = '''# syntax=docker/dockerfile:1.10
