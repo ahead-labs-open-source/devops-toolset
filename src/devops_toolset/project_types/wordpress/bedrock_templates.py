@@ -84,7 +84,8 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s CMD ["php", "-r", "exit(@file_get_contents('http://127.0.0.1:8080/healthz.php') === 'ok' ? 0 : 1);"]
 '''
 
-COMPOSE = '''services:
+COMPOSE = '''name: __SITE__
+services:
   wordpress:
     build:
       context: .
