@@ -242,7 +242,8 @@ def main():
     elif args.command == 'test':
         require_locks()
         compose('config', '--quiet')
-        app('composer', 'validate', '--strict')
+        # Exact WordPress pinning is intentional; keep schema and lock checks strict.
+        app('composer', 'validate', '--strict', '--no-check-all')
         app('composer', 'audit')
         app('php', '-l', 'config/application.php')
         node('npm', 'ci')
