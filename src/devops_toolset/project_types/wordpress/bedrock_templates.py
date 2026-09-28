@@ -168,6 +168,7 @@ PROJECT_TOOL = '''#!/usr/bin/env python3
 """Local application tooling; cloud infrastructure changes use VCS/HCP only."""
 import argparse
 import json
+import os
 import secrets
 import shutil
 import subprocess
@@ -184,12 +185,20 @@ def compose(*command):
     run('docker', 'compose', *command)
 
 
+def tool_container(service, *command):
+    options = ['run', '--rm', '--no-deps']
+    if hasattr(os, 'getuid'):
+        options.extend(['--user', f'{os.getuid()}:{os.getgid()}'])
+    options.extend(['-e', 'COMPOSER_HOME=/tmp/composer', '-e', 'npm_config_cache=/tmp/npm'])
+    compose(*options, service, *command)
+
+
 def app(*command):
-    compose('run', '--rm', '--no-deps', 'wordpress', *command)
+    tool_container('wordpress', *command)
 
 
 def node(*command):
-    compose('run', '--rm', '--no-deps', 'node', *command)
+    tool_container('node', *command)
 
 
 def setup():
