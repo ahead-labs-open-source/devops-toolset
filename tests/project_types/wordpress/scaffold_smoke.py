@@ -13,7 +13,8 @@ def run(*command, cwd):
 
 def main():
     with tempfile.TemporaryDirectory(prefix='bedrock-smoke-') as directory:
-        root = Path(directory)
+        # The private temporary parent is mode 0700; Apache needs a readable mount root.
+        root = Path(directory) / 'site'
         create(root, render('scaffold-smoke', 'example.com', 'smoke', '7.1.2'))
         tool = str(root / 'tools/project.py')
         try:
