@@ -66,6 +66,7 @@ RUN npm ci && npm run build
 
 FROM base AS dependencies
 COPY composer.json composer.lock ./
+RUN mkdir -p web/app/mu-plugins web/app/plugins web/app/themes
 RUN --mount=type=secret,id=composer_auth,env=COMPOSER_AUTH composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
 
 FROM base AS production
