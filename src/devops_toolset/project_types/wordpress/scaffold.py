@@ -22,12 +22,24 @@ ENV_KEYS = {'WP_ENV', 'WP_HOME', 'WP_SITEURL', 'DB_HOST', 'DB_NAME',
             'DB_USER', 'DB_PASSWORD', 'DB_PREFIX'}
 
 
+def valid_domain(domain: str) -> bool:
+    """Validate bounded ASCII DNS labels without nested regex backtracking."""
+    if len(domain) > 253 or not domain.isascii() or domain != domain.lower():
+        return False
+    labels = domain.split('.')
+    if len(labels) < 2 or not 2 <= len(labels[-1]) <= 63 or not labels[-1].isalpha():
+        return False
+    return all(1 <= len(label) <= 63 and label[0].isalnum() and label[-1].isalnum()
+               and all(character.isalnum() or character == '-' for character in label)
+               for label in labels)
+
+
 def render(site: str, domain: str, theme: str, wordpress_version: str,
            php_version: str = '8.3', database_prefix: str = 'wp_', registry: str = '') -> dict[str, str]:
     """Render deterministic project sources, never credentials or lock files."""
     if not SLUG.fullmatch(site) or not SLUG.fullmatch(theme):
         raise ValueError('Site and theme names must be lowercase kebab-case slugs')
-    if not re.fullmatch(r'(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,63}', domain):
+    if not valid_domain(domain):
         raise ValueError('Domain must be a lowercase DNS name')
     if not VERSION.fullmatch(wordpress_version) or not re.fullmatch(r'8\.[3-9]', php_version):
         raise ValueError('Use an exact WordPress version and PHP 8.3 or later (8.x)')
