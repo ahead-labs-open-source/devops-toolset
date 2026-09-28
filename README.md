@@ -175,6 +175,9 @@ Each project type module provides specialized commands, utilities, and automatio
 
 ## 🌐 WordPress Tools
 
+For new Bedrock/Composer/Vite repositories, use the [WordPress quick start](docs/wordpress.md). The generator works from an empty directory and has no dependency on Hispania.
+
+
 This toolset includes comprehensive WordPress automation using WP-CLI. For more information, refer to the [WP-CLI Handbook](https://make.wordpress.org/cli/handbook/).
 
 ## 📝 Configuration
@@ -205,4 +208,5 @@ Maintained by **Ahead Labs**
 ---
 
 _Current version: 2.21.0_
+
 
