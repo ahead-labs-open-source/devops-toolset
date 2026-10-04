@@ -45,6 +45,6 @@ Never commit `auth.json`, use Docker build arguments for credentials, or install
 
 ## Compatibility
 
-The older `scripts.bootstrap_repository` command supports legacy WP-CLI projects and is not the Bedrock entry point. Existing callers remain unchanged. The new generator owns its own source contract and validator; no Hispania scripts or private repositories are needed to generate a site.
+The older `scripts.bootstrap_repository` command supports legacy WP-CLI projects and is not the Bedrock entry point. For this legacy command, invoke from the project directory or its parent: the destination must be an existing directory within the current directory. Parent traversal, outside absolute paths and symbolic links in the destination tree are rejected before any generation or Git operation. The new generator owns its own source contract and validator; no Hispania scripts or private repositories are needed to generate a site.
 
 For upstream behavior, use [Bedrock](https://roots.io/bedrock/docs/), [Composer](https://getcomposer.org/doc/), and [Vite](https://vite.dev/guide/).

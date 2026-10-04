@@ -16,6 +16,7 @@ Args:
 
 import argparse
 import os
+from pathlib import Path
 from devops_toolset.core.literals_core import LiteralsCore
 from devops_toolset.core.app import App
 from devops_toolset.project_types.wordpress.scripts import generate_wordpress
@@ -28,10 +29,42 @@ app: App = App()
 literals = LiteralsCore([WordpressLiterals])
 
 
+def validate_project_path(project_path: str) -> str:
+    """Allow existing directories inside the invocation directory, without symlinks.
+
+    Invoke from the project directory or its parent. The current directory is
+    the trusted boundary; CLI arguments cannot select another filesystem tree.
+    Concurrent changes to this tree by other processes are not supported.
+    """
+    base = Path.cwd().resolve(strict=True)
+    supplied = Path(project_path)
+    if ".." in supplied.parts:
+        raise ValueError("Parent traversal is not allowed in project_path")
+    candidate = supplied if supplied.is_absolute() else base / supplied
+    try:
+        relative = candidate.relative_to(base)
+    except ValueError as error:
+        raise ValueError("project_path must be inside the current directory") from error
+    current = base
+    for part in relative.parts:
+        current = current / part
+        if current.is_symlink():
+            raise ValueError("Symbolic links are not allowed in project_path")
+    target = candidate.resolve(strict=True)
+    if not target.is_relative_to(base) or not target.is_dir():
+        raise ValueError("project_path must be an existing directory inside the current directory")
+    # Existing child links could redirect writes performed by the generator.
+    if any(path.is_symlink() for path in target.rglob("*")):
+        raise ValueError("The project directory must not contain symbolic links")
+    return str(target)
+
+
 def main(project_path: str, db_user_password: str, db_admin_password: str, wp_admin_password: str,
          environment: str, additional_environments: list, additional_environment_db_user_passwords: list,
          create_db: bool, skip_partial_dumps: bool, skip_git: bool, **kwnargs):
     """Generates a WordPress Git repository for local development."""
+
+    project_path = validate_project_path(project_path)
 
     # Change the working directory
     os.chdir(project_path)
