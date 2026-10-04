@@ -105,6 +105,29 @@ class ScaffoldTests(unittest.TestCase):
                 scaffold.create(link, self.files)
             self.assertEqual(list(target.iterdir()), [])
 
+    def test_unsafe_outputs_are_rejected_before_any_write(self):
+        with tempfile.TemporaryDirectory() as directory:
+            parent = Path(directory)
+            for name in ['../escape', 'nested/../../escape', '/absolute',
+                         'C:/escape', 'C:escape', r'..\escape', '.', '']:
+                for dry_run in [False, True]:
+                    root = parent / 'site'
+                    with self.subTest(name=name, dry_run=dry_run), self.assertRaises(ValueError):
+                        scaffold.create(root, {'valid.txt': 'safe', name: 'unsafe'}, dry_run)
+                    self.assertFalse(root.exists())
+                    self.assertFalse((parent / 'escape').exists())
+
+    def test_symlink_parent_is_rejected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            parent = Path(directory)
+            destination = parent / 'destination'
+            destination.mkdir()
+            link = parent / 'link'
+            link.symlink_to(destination, target_is_directory=True)
+            with self.assertRaises(ValueError):
+                scaffold.create(link / 'site', self.files)
+            self.assertEqual(list(destination.iterdir()), [])
+
     def test_dns_label_boundaries(self):
         for domain in ['-host.example', 'host-.example', 'a..com', 'a.c',
                        'a' * 64 + '.com', 'a' * 10000, 'münchen.de', 'EXAMPLE.com']:

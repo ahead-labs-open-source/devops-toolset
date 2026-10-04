@@ -7,16 +7,21 @@ from __future__ import annotations
 import argparse
 import json
 import re
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 
 from devops_toolset.project_types.wordpress import bedrock_templates as templates
+
+COMPOSER_FILE = 'composer.json'
+PACKAGE_FILE = 'package.json'
+PROJECT_FILE = 'project.json'
+ENV_EXAMPLE_FILE = '.env.example'
 
 SLUG = re.compile(r'[a-z0-9]+(?:-[a-z0-9]+)*')
 VERSION = re.compile(r'\d+\.\d+(?:\.\d+)?')
 REQUIRED = ('config/application.php', 'web/index.php', 'web/wp-config.php',
-            'docker/site.conf', 'tools/project.py', 'composer.json', 'package.json',
-            'vite.config.js', 'Dockerfile', 'compose.yaml', '.env.example',
-            '.dockerignore', 'wp-cli.yml', 'project.json', 'web/healthz.php',
+            'docker/site.conf', 'tools/project.py', COMPOSER_FILE, PACKAGE_FILE,
+            'vite.config.js', 'Dockerfile', 'compose.yaml', ENV_EXAMPLE_FILE,
+            '.dockerignore', 'wp-cli.yml', PROJECT_FILE, 'web/healthz.php',
             '.github/workflows/validate.yml')
 ENV_KEYS = {'WP_ENV', 'WP_HOME', 'WP_SITEURL', 'DB_HOST', 'DB_NAME',
             'DB_USER', 'DB_PASSWORD', 'DB_PREFIX'}
@@ -43,7 +48,7 @@ def render(site: str, domain: str, theme: str, wordpress_version: str,
         raise ValueError('Domain must be a lowercase DNS name')
     if not VERSION.fullmatch(wordpress_version) or not re.fullmatch(r'8\.[3-9]', php_version):
         raise ValueError('Use an exact WordPress version and PHP 8.3 or later (8.x)')
-    if not re.fullmatch(r'[A-Za-z0-9_]+', database_prefix):
+    if not re.fullmatch(r'\w+', database_prefix, flags=re.ASCII):
         raise ValueError('Invalid database prefix')
     if registry and not re.fullmatch(r'[a-z0-9][a-z0-9.:-]*(?:/[a-z0-9_-]+)*', registry):
         raise ValueError('Invalid registry')
@@ -73,9 +78,9 @@ def render(site: str, domain: str, theme: str, wordpress_version: str,
            'DB_SSL=false\n' + ''.join(key + '=GENERATE\n' for key in salts))
     theme_dir = f'web/app/themes/{theme}'
     files = {
-        'composer.json': json.dumps(composer, indent=2),
-        'package.json': json.dumps(package, indent=2),
-        'project.json': json.dumps({'site_name': site, 'domain': domain, 'theme_name': theme,
+        COMPOSER_FILE: json.dumps(composer, indent=2),
+        PACKAGE_FILE: json.dumps(package, indent=2),
+        PROJECT_FILE: json.dumps({'site_name': site, 'domain': domain, 'theme_name': theme,
                                    'wordpress_version': wordpress_version, 'php_version': php_version,
                                    'image_name': f'{registry}/{site}' if registry else site}, indent=2),
         'config/application.php': templates.APPLICATION,
@@ -88,7 +93,7 @@ def render(site: str, domain: str, theme: str, wordpress_version: str,
         'Dockerfile': templates.DOCKERFILE.replace('__PHP__', php_version),
         'compose.yaml': templates.COMPOSE.replace('__SITE__', site),
         '.dockerignore': templates.DOCKERIGNORE,
-        '.env.example': env,
+        ENV_EXAMPLE_FILE: env,
         '.gitignore': '.env\n.env.*\n!.env.example\nauth.json\n/vendor/\n/node_modules/\n/web/wp/\n/web/app/uploads/*\n!/web/app/uploads/.gitkeep\n/web/app/cache/\n**/dist/\n*.log\n*.sql\n.staging/\n',
         'tools/project.py': templates.PROJECT_TOOL,
         '.github/workflows/validate.yml': templates.CI,
@@ -147,13 +152,27 @@ CI validates/builds the application. Infrastructure and image-digest changes go 
 
 
 def create(target: Path, files: dict[str, str], dry_run: bool = False) -> list[str]:
-    """Create a new repository; never overwrite a non-empty target."""
-    if target.is_symlink() or (target.exists() and (not target.is_dir() or any(target.iterdir()))):
+    """Create an empty repository with every output confined to its destination."""
+    if any(parent.is_symlink() for parent in (target, *target.parents)):
+        raise ValueError('Target and its parents must not be symbolic links')
+    root = target.resolve()
+    if root.exists() and (not root.is_dir() or any(root.iterdir())):
         raise ValueError('Target must be absent or an empty directory')
+    outputs = []
+    for name, content in files.items():
+        relative = PurePosixPath(name)
+        windows = PureWindowsPath(name)
+        if (not name or relative.is_absolute() or windows.drive or windows.root
+                or '\\' in name or ':' in name or '..' in relative.parts
+                or relative == PurePosixPath('.')):
+            raise ValueError('Output paths must be relative and remain inside the target')
+        path = (root / relative).resolve()
+        if not path.is_relative_to(root) or path == root:
+            raise ValueError('Output path escapes the target')
+        outputs.append((path, content))
     if not dry_run:
-        target.mkdir(parents=True, exist_ok=True)
-        for name, content in files.items():
-            path = target / name
+        root.mkdir(parents=True, exist_ok=True)
+        for path, content in outputs:
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(content, encoding='utf-8')
     return sorted(files)
@@ -162,12 +181,12 @@ def create(target: Path, files: dict[str, str], dry_run: bool = False) -> list[s
 def validate_project(root: Path, require_locks: bool = False) -> list[str]:
     """Validate generated source before setup, or locked source before CI."""
     errors = ['Missing: ' + path for path in REQUIRED if not (root / path).is_file()]
-    if (root / '.env.example').is_file():
-        keys = {line.split('=', 1)[0] for line in (root / '.env.example').read_text().splitlines() if '=' in line}
+    if (root / ENV_EXAMPLE_FILE).is_file():
+        keys = {line.split('=', 1)[0] for line in (root / ENV_EXAMPLE_FILE).read_text().splitlines() if '=' in line}
         errors.extend('Missing environment key: ' + key for key in sorted(ENV_KEYS - keys))
     if require_locks:
         errors.extend('Missing lock file: ' + name for name in ('composer.lock', 'package-lock.json') if not (root / name).is_file())
-    for name in ('composer.json', 'package.json', 'project.json'):
+    for name in (COMPOSER_FILE, PACKAGE_FILE, PROJECT_FILE):
         if (root / name).is_file():
             try:
                 json.loads((root / name).read_text())
